@@ -1,7 +1,6 @@
 import org.scalatest.FunSuite
 import play.api.libs.json.Json
-import slack.models.MessageSubtypes.FileShareMessage
-import slack.models.{BotMessage, GroupJoined, MessageChanged, MessageSubtypes, MessageWithSubtype, ReactionAdded, ReactionItemFile, ReactionItemFileComment, ReactionItemMessage, ReactionRemoved, SlackEvent, SlackFile}
+import slack.models.{BotMessage, GroupJoined, MessageChanged, MessageSubtypes, MessageWithSubtype, SlackEvent}
 
 /**
  * Created by ptx on 9/5/15.

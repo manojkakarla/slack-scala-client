@@ -380,3 +380,17 @@ case class AppsUninstalled(
   app_id: String,
   event_ts: String
 ) extends SlackEvent
+
+case class DesktopNotification(
+  title: String,
+  event_ts: String
+) extends SlackEvent
+
+case class UpdateThreadState(
+  event_ts: String
+) extends SlackEvent
+
+case class OtherEvent(
+  `type`: String,
+  raw: JsValue
+) extends SlackEvent
