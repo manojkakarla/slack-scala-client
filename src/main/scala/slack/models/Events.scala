@@ -19,9 +19,12 @@ case class Message (
 ) extends SlackEvent
 
 case class EditMessage (
-  user: String,
+  ts:String,
   text: String,
-  ts:String
+  user: Option[String],
+  bot_id: Option[String],
+  subtype: Option[String],
+  attachments: Option[Seq[Attachment]]
 )
 
 case class MessageChanged (

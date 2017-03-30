@@ -17,7 +17,7 @@ class SlackApiClientTest extends FunSuite {
     val actionField = Seq(ActionField("accept", "Accept", "button", Some("primary")))
     val attachment = Attachment(text = Some("Do you want to accept?"),
       fallback = Some("backup message: code-123456"),
-      callback_id = Some("code-123456"), actions = actionField)
+      callback_id = Some("code-123456"), actions = Some(actionField))
     val future = apiClient.postChatMessage(channel, "Request", attachments = Some(Seq(attachment)))
     val result = Await.result(future, 5.seconds)
     println(result)

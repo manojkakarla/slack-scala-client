@@ -5,7 +5,7 @@ import sbtrelease._
 
 object BuildSettings {
   val buildOrganization = "com.github.gilbertw1"
-  val buildVersion      = "0.1.9"
+  val buildVersion      = "0.1.8"
   val buildScalaVersion = "2.11.8"
 
   val buildSettings = Seq (
@@ -52,7 +52,7 @@ object Resolvers {
 object Dependencies {
   val akkaVersion = "2.4.8"
   val sprayVersion = "1.3.3"
-  val playVersion = "2.5.4"
+  val playVersion = "2.4.6"
 
   val akkaActor = "com.typesafe.akka" %% "akka-actor" % akkaVersion
   val akkaSlf4j = "com.typesafe.akka" %% "akka-slf4j" % akkaVersion

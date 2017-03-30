@@ -1,6 +1,7 @@
 import org.scalatest.FunSuite
 import play.api.libs.json.Json
-import slack.models.{BotMessage, GroupJoined, MessageChanged, MessageSubtypes, MessageWithSubtype, SlackEvent}
+import slack.models.MessageSubtypes.FileShareMessage
+import slack.models._
 
 /**
  * Created by ptx on 9/5/15.
@@ -145,6 +146,53 @@ class TestJsonMessages extends FunSuite {
         |  },
         |  "event_ts":"1461159087.697321",
         |  "ts":"1461159087.000006"
+        |}""".stripMargin)
+    val ev = json.as[MessageChanged]
+  }
+
+  test("bot message_changed event parsed") {
+    val json = Json.parse(
+      """{
+        |   "type":"message",
+        |   "message":{
+        |      "text":"*dkdav2* has accepted New Travel Event for *Dylan Davis* from *Demo Client (demo-client)* in channel: *demo-dkdav22* after: 4m 55s",
+        |      "username":"OK Roger Agents Dev",
+        |      "bot_id":"B1M2TGUN9",
+        |      "type":"message",
+        |      "subtype":"bot_message",
+        |      "ts":"1490211519.901355"
+        |   },
+        |   "subtype":"message_changed",
+        |   "hidden":true,
+        |   "channel":"C4MNL9T6Z",
+        |   "previous_message":{
+        |      "text":"<@U430KDM7Z>\nNew Travel Event for *Dylan Davis* from *Demo Client*. ",
+        |      "username":"OK Roger Agents Dev",
+        |      "bot_id":"B1M2TGUN9",
+        |      "attachments":[
+        |         {
+        |            "callback_id":"819626",
+        |            "fallback":"backup message: 819626",
+        |            "text":"To action this event click below",
+        |            "id":1,
+        |            "actions":[
+        |               {
+        |                  "id":"1",
+        |                  "name":"accept",
+        |                  "text":"Accept",
+        |                  "type":"button",
+        |                  "value":"",
+        |                  "style":"primary"
+        |               }
+        |            ]
+        |         }
+        |      ],
+        |      "type":"message",
+        |      "subtype":"bot_message",
+        |      "ts":"1490211519.901355"
+        |   },
+        |   "event_ts":"1490211814.980903",
+        |   "ts":"1490211814.980903"
         |}""".stripMargin)
     val ev = json.as[MessageChanged]
   }
