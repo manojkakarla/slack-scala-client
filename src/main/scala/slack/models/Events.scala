@@ -42,6 +42,28 @@ case class MessageDeleted (
   channel: String
 ) extends SlackEvent
 
+case class ThreadReply (
+  user: String,
+  ts: String
+)
+
+case class ReplyMessage (
+  user: String,
+  ts: String,
+  thread_ts: String,
+  reply_count: Int,
+  unread_count: Int,
+  replies: Seq[ThreadReply]
+)
+
+case class MessageReplied (
+  message: ReplyMessage,
+  ts: String,
+  event_ts: String,
+  channel: String,
+  hidden:Option[Boolean]
+) extends SlackEvent
+
 case class BotMessage (
   ts: String,
   channel: String,

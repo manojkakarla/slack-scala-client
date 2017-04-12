@@ -150,6 +150,34 @@ class TestJsonMessages extends FunSuite {
     val ev = json.as[MessageChanged]
   }
 
+  test("message_replied event parsed") {
+    val json = Json.parse(
+      """{
+        |   "type":"message",
+        |   "message":{
+        |      "type":"message",
+        |      "user":"U0W6K3Y6T",
+        |      "text":"Hey",
+        |      "thread_ts":"1492003424.583500",
+        |      "reply_count":1,
+        |      "replies":[
+        |         {
+        |            "user":"U0W6K3Y6T",
+        |            "ts":"1492003445.590962"
+        |         }
+        |      ],
+        |      "unread_count":1,
+        |      "ts":"1492003424.583500"
+        |   },
+        |   "subtype":"message_replied",
+        |   "hidden":true,
+        |   "channel":"G1GTXF057",
+        |   "event_ts":"1492003445.590973",
+        |   "ts":"1492003445.590973"
+        |}""".stripMargin)
+    val ev = json.as[MessageReplied]
+  }
+
   test("bot message_changed event parsed") {
     val json = Json.parse(
       """{
