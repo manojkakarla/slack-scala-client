@@ -25,7 +25,14 @@ case class AttachmentField(title: String, value: String, short: Boolean)
 case class ActionField(name: String,
                        text: String, `type`: String,
                        style: Option[String] = None,
-                       value: Option[String] = None, confirm: Option[ConfirmField] = None)
+                       value: Option[String] = None,
+                       data_source: Option[String] = None,
+                       min_query_length: Option[Int] = None,
+                       options: Option[Seq[OptionField]] = None,
+                       selected_options: Option[Seq[OptionField]] = None,
+                       confirm: Option[ConfirmField] = None)
+
+case class OptionField(text: String, value: String)
 
 case class ConfirmField(text: String, title: Option[String] = None,
                         ok_text: Option[String] = None, cancel_text: Option[String] = None)

@@ -5,6 +5,7 @@ import play.api.libs.json._
 
 package object models {
   implicit val confirmFieldFmt = Json.format[ConfirmField]
+  implicit val optionFieldFmt = Json.format[OptionField]
   implicit val actionFieldFmt = Json.format[ActionField]
   implicit val attachmentFieldFmt = Json.format[AttachmentField]
   implicit val attachmentFmt = Json.format[Attachment]
