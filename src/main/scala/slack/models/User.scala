@@ -26,6 +26,8 @@ case class UserProfile (
   email: Option[String],
   skype: Option[String],
   phone: Option[String],
+  status_emoji: Option[String],
+  status_text: Option[String],
   image_24: String,
   image_32: String,
   image_48: String,
