@@ -1,6 +1,5 @@
 package slack
 
-import play.api.data.validation.ValidationError
 import play.api.libs.json._
 
 package object models {
@@ -22,6 +21,32 @@ package object models {
   implicit val slackFileFmt = Json.format[SlackFile]
   implicit val slackFileIdFmt = Json.format[SlackFileId]
   implicit val updateResponseFmt = Json.format[UpdateResponse]
+  implicit val appFmt = Json.format[App]
+  implicit val reactionMsgFmt = Json.format[ReactionItemMessage]
+  implicit val reactionFileFmt = Json.format[ReactionItemFile]
+  implicit val reactionFileCommentFmt = Json.format[ReactionItemFileComment]
+  implicit val reactionItemReads = new Reads[ReactionItem] {
+    def reads(json: JsValue): JsResult[ReactionItem] = {
+      val rType = (json \ "type").asOpt[String]
+      if (rType.isDefined) {
+        rType.get match {
+          case "message" => JsSuccess(json.as[ReactionItemMessage])
+          case "file" => JsSuccess(json.as[ReactionItemFile])
+          case "file_comment" => JsSuccess(json.as[ReactionItemFileComment])
+          case t: String => JsError(JsonValidationError("Invalid type property: {}", t))
+        }
+      } else {
+        JsError(JsonValidationError("Required (string) event type property is missing."))
+      }
+    }
+  }
+  implicit val reactionItemWrites = new Writes[ReactionItem] {
+    override def writes(item: ReactionItem): JsValue = item match {
+      case i:ReactionItemMessage => Json.toJson(i)
+      case i:ReactionItemFile => Json.toJson(i)
+      case i:ReactionItemFileComment => Json.toJson(i)
+    }
+  }
 
   // Event Formats
   implicit val helloFmt = Json.format[Hello]
@@ -48,6 +73,9 @@ package object models {
   implicit val imCloseFmt = Json.format[ImClose]
   implicit val imMarkedFmt = Json.format[ImMarked]
   implicit val imHistoryChangedFmt = Json.format[ImHistoryChanged]
+  implicit val mpImOpenFmt = Json.format[MpImOpen]
+  implicit val mpImCloseFmt = Json.format[MpImClose]
+  implicit val mpImJoinFmt = Json.format[MpImJoined]
   implicit val groupJoinFmt = Json.format[GroupJoined]
   implicit val groupLeftFmt = Json.format[GroupLeft]
   implicit val groupOpenFmt = Json.format[GroupOpen]
@@ -87,6 +115,10 @@ package object models {
   implicit val accountsChangedFmt = Json.format[AccountsChanged]
   implicit val teamMigrationStartedFmt = Json.format[TeamMigrationStarted]
   implicit val reconnectUrlFmt = Json.format[ReconnectUrl]
+  implicit val appsChangedFmt = Json.format[AppsChanged]
+  implicit val appsUninstalledFmt = Json.format[AppsUninstalled]
+  implicit val appsInstalledFmt = Json.format[AppsInstalled]
+  implicit val desktopNotificationFmt = Json.format[DesktopNotification]
 
   // Message sub-types
   import MessageSubtypes._
@@ -139,6 +171,9 @@ package object models {
         case e: ImClose => Json.toJson(e)
         case e: ImMarked => Json.toJson(e)
         case e: ImHistoryChanged => Json.toJson(e)
+        case e: MpImOpen => Json.toJson(e)
+        case e: MpImClose => Json.toJson(e)
+        case e: MpImJoined => Json.toJson(e)
         case e: GroupJoined => Json.toJson(e)
         case e: GroupLeft => Json.toJson(e)
         case e: GroupOpen => Json.toJson(e)
@@ -178,6 +213,10 @@ package object models {
         case e: AccountsChanged => Json.toJson(e)
         case e: TeamMigrationStarted => Json.toJson(e)
         case e: ReconnectUrl => Json.toJson(e)
+        case e: AppsChanged => Json.toJson(e)
+        case e: AppsUninstalled => Json.toJson(e)
+        case e: AppsInstalled => Json.toJson(e)
+        case e: DesktopNotification => Json.toJson(e)
       }
     }
   }
@@ -237,6 +276,9 @@ package object models {
           case "im_close" => JsSuccess(jsValue.as[ImClose])
           case "im_marked" => JsSuccess(jsValue.as[ImMarked])
           case "im_history_changed" => JsSuccess(jsValue.as[ImHistoryChanged])
+          case "mpim_open" => JsSuccess(jsValue.as[MpImOpen])
+          case "mpim_close" => JsSuccess(jsValue.as[MpImClose])
+          case "mpim_joined" => JsSuccess(jsValue.as[MpImJoined])
           case "group_joined" => JsSuccess(jsValue.as[GroupJoined])
           case "group_left" => JsSuccess(jsValue.as[GroupLeft])
           case "group_open" => JsSuccess(jsValue.as[GroupOpen])
@@ -276,12 +318,16 @@ package object models {
           case "accounts_changed" => JsSuccess(jsValue.as[AccountsChanged])
           case "team_migration_started" => JsSuccess(jsValue.as[TeamMigrationStarted])
           case "reconnect_url" => JsSuccess(jsValue.as[ReconnectUrl])
-          case t: String => JsError(ValidationError("Invalid type property: {}", t))
+          case "apps_changed" => JsSuccess(jsValue.as[AppsChanged])
+          case "apps_uninstalled" => JsSuccess(jsValue.as[AppsUninstalled])
+          case "apps_installed" => JsSuccess(jsValue.as[AppsInstalled])
+          case "desktop_notification" => JsSuccess(jsValue.as[DesktopNotification])
+          case t: String => JsError(JsonValidationError("Invalid type property: {}", t))
         }
       } else if ((jsValue \ "reply_to").asOpt[Long].isDefined) {
         JsSuccess(jsValue.as[Reply])
       } else {
-        JsError(ValidationError("Required (string) event type property is missing."))
+        JsError(JsonValidationError("Required (string) event type property is missing."))
       }
     }
   }

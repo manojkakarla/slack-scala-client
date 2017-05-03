@@ -5,15 +5,17 @@ import sbtrelease._
 
 object BuildSettings {
   val buildOrganization = "com.github.gilbertw1"
-  val buildVersion      = "0.1.6"
-  val buildScalaVersion = "2.11.7"
+  val buildVersion      = "0.2.1"
+  val buildScalaVersion = "2.12.1"
+  val buildCrossScalaVersions = Seq("2.11.8", "2.12.1")
 
-  val buildSettings = Defaults.defaultSettings ++ Seq (
-    organization := buildOrganization,
-    version      := buildVersion,
-    scalaVersion := buildScalaVersion,
-    publishMavenStyle := true,
-    publishTo := {
+  val buildSettings = Seq (
+    organization       := buildOrganization,
+    version            := buildVersion,
+    scalaVersion       := buildScalaVersion,
+    crossScalaVersions := buildCrossScalaVersions,
+    publishMavenStyle  := true,
+    publishTo          := {
       val nexus = "https://oss.sonatype.org/"
       if (isSnapshot.value)
         Some("snapshots" at nexus + "content/repositories/snapshots")
@@ -50,23 +52,18 @@ object Resolvers {
 }
 
 object Dependencies {
-  val akkaVersion = "2.4.2"
-  val sprayVersion = "1.3.3"
+  val akkaVersion = "2.4.14"
 
   val akkaActor = "com.typesafe.akka" %% "akka-actor" % akkaVersion
-  val akkaSlf4j = "com.typesafe.akka" %% "akka-slf4j" % akkaVersion
+  val akkaHttp = "com.typesafe.akka" %% "akka-http-core" % "10.0.0"
 
-  val scalaAsync = "org.scala-lang.modules" %% "scala-async" % "0.9.5"
-  val dispatch = "net.databinder.dispatch" %% "dispatch-core" % "0.11.3"
-  val playJson = "com.typesafe.play" %% "play-json" % "2.4.3"
-  val sprayWebsocket = "com.wandoulabs.akka" %% "spray-websocket" % "0.1.4"
+  val scalaAsync = "org.scala-lang.modules" %% "scala-async" % "0.9.6"
+  val playJson = "com.typesafe.play" %% "play-json" % "2.6.0-M1"
 
-  val playWS = "com.typesafe.play" %% "play-ws" % "2.4.3"
+  val scalatest = "org.scalatest" %% "scalatest" % "3.0.0" % "test"
 
-  val scalatest = "org.scalatest" %% "scalatest" % "2.2.1" % "test"
-
-  val akkaDependencies = Seq(akkaActor, akkaSlf4j)
-  val miscDependencies = Seq(playWS, playJson, scalaAsync, dispatch, sprayWebsocket)
+  val akkaDependencies = Seq(akkaActor, akkaHttp)
+  val miscDependencies = Seq(playJson, scalaAsync)
   val testDependencies = Seq(scalatest)
 
   val allDependencies = akkaDependencies ++ miscDependencies ++ testDependencies

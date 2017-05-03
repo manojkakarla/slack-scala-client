@@ -1,8 +1,6 @@
 slack-scala-client
 ==================
 
-[![Build Status](https://travis-ci.org/manojkakarla/slack-scala-client.svg?branch=master)](https://travis-ci.org/manojkakarla/slack-scala-client)
-
 A Scala library for interacting with the Slack API and real time messaging interface
 
 
@@ -11,7 +9,13 @@ Installation
 
 Add SBT dependency:
 
-    libraryDependencies += "com.github.gilbertw1" %% "slack-scala-client" % "0.1.4"
+    libraryDependencies += "com.github.gilbertw1" %% "slack-scala-client" % "0.2.1"
+
+Scaladoc
+--------
+
+* [0.2.0](http://doc.bryangilbert.com/slack-scala-client/0.2.0/)
+* [0.1.8](http://doc.bryangilbert.com/slack-scala-client/0.1.8/)
 
 
 API Client Usage
@@ -31,10 +35,10 @@ val token = "<Your Token Here>"
 val client = SlackApiClient(token)
 ```
 
-Calling any api functions requires an implicit `ExecutionContext`... the global one can be imported simply:
+Calling any api functions requires an implicit `ActorSystem`... one can be created simply:
 
 ```scala
-import scala.concurrent.ExecutionContext.Implicits.global
+implicit val system = ActorSystem("slack")
 ```
 
 The async client returns futures as the result of each of its API functions:
@@ -62,7 +66,7 @@ The API clients implement the full Slack API. A full list of the available endpo
 RTM Client Usage
 ----------------
 
-The real time messaging client is implemented using akka and requires having an implicit `ActorRefFactory` in scope. Either an `ActorSystem` or `ActorContext` will work:
+The real time messaging client is implemented using akka and requires having an implicit `ActorSystem` in scope. Either an `ActorSystem` or `ActorContext` will work:
 
 ```scala
 import slack.rtm.SlackRtmClient
@@ -165,3 +169,9 @@ Caveat Emptor
 - Responses to RTM messages sent out are not currently checked to verify they were successfully received (Coming Soon!)
 - Investigate a way to ensure all missed messages are received during a disconnection
 - A small number of response types have yet to be fleshed out
+
+
+Changelog
+---------
+
+Changelog can be found [here](CHANGELOG.md)

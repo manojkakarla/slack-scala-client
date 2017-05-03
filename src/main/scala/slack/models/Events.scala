@@ -78,7 +78,7 @@ object MessageSubtypes {
   }
 
   case class FileShareMessage(
-    file: SlackFileId
+    file: SlackFile
   ) extends MessageSubtype {
     val subtype = "file_share"
   }
@@ -86,14 +86,14 @@ object MessageSubtypes {
 
 case class ReactionAdded (
   reaction: String,
-  item: JsValue, // TODO: Different item types -- https://api.slack.com/methods/stars.list
+  item: ReactionItem,
   event_ts: String,
   user: String
 ) extends SlackEvent
 
 case class ReactionRemoved (
   reaction: String,
-  item: JsValue, // TODO: Different item types -- https://api.slack.com/methods/stars.list
+  item: ReactionItem,
   event_ts: String,
   user: String
 ) extends SlackEvent
@@ -172,6 +172,23 @@ case class ImHistoryChanged (
 
 case class GroupJoined(
   channel: Channel
+) extends SlackEvent
+
+case class MpImJoined(
+  channel: Channel
+) extends SlackEvent
+
+case class MpImOpen(
+  user: String,
+  channel: String,
+  event_ts: String
+) extends SlackEvent
+
+case class MpImClose(
+  user: String,
+  channel: String,
+  event_ts: String,
+  converted_to: Option[String]
 ) extends SlackEvent
 
 case class GroupLeft (
@@ -277,7 +294,7 @@ case class ManualPresenceChange (
 
 case class PrefChange (
   name: String,
-  value: String
+  value: JsValue
 ) extends SlackEvent
 
 case class UserChange (
@@ -347,4 +364,39 @@ case class ReconnectUrl (
   url: Option[String] // Optional because currently undocumented and could change
 ) extends SlackEvent
 
-case class Reply(ok:Boolean, reply_to: Long, ts: String,  text: String) extends SlackEvent
+case class Reply(
+  ok: Boolean,
+  reply_to: Long,
+  ts: String,
+  text: String
+) extends SlackEvent
+
+case class AppsChanged(
+  app: App,
+  event_ts: String
+) extends SlackEvent
+
+case class AppsUninstalled(
+  app_id: String,
+  event_ts: String
+) extends SlackEvent
+
+case class AppsInstalled(
+  app: App,
+  event_ts: String
+) extends SlackEvent
+
+case class DesktopNotification(
+  `type`: String,
+  title: String,
+  subtitle: String,
+  msg: String,
+  content: String,
+  channel: String,
+  launchUri: String,
+  avatarImage: String,
+  ssbFilename: String,
+  imageUrl: Option[String],
+  is_shared: Boolean,
+  event_ts: String
+) extends SlackEvent
