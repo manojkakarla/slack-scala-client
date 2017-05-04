@@ -191,14 +191,15 @@ class SlackApiClient(token: String) {
   def postChatMessage(channelId: String, text: String, username: Option[String] = None, asUser: Option[Boolean] = None,
       parse: Option[String] = None, linkNames: Option[String] = None, attachments: Option[Seq[Attachment]] = None,
       unfurlLinks: Option[Boolean] = None, unfurlMedia: Option[Boolean] = None, iconUrl: Option[String] = None,
-      iconEmoji: Option[String] = None, replaceOriginal: Option[Boolean]= None,
-      deleteOriginal: Option[Boolean] = None)(implicit ec: ExecutionContext): Future[String] = {
+      iconEmoji: Option[String] = None, replaceOriginal: Option[Boolean]= None, deleteOriginal: Option[Boolean] = None,
+      threadTs: Option[String] = None)(implicit ec: ExecutionContext): Future[String] = {
     val res = makeApiMethodRequest (
       "chat.postMessage",
       "channel" -> channelId,
       "text" -> text,
       "username" -> username,
       "as_user" -> asUser,
+      "thread_ts" -> threadTs,
       "parse" -> parse,
       "link_names" -> linkNames,
       "attachments" -> attachments.map(a => Json.stringify(Json.toJson(a))),
@@ -214,11 +215,13 @@ class SlackApiClient(token: String) {
   def updateChatMessage(channelId: String, ts: String, text: String,
                         attachments: Option[Seq[Attachment]] = None,
                         parse: Option[String] = None, linkNames: Option[String] = None,
-                        asUser: Option[Boolean] = None)(implicit ec: ExecutionContext): Future[UpdateResponse] = {
+                        asUser: Option[Boolean] = None,
+                        threadTs: Option[String] = None)(implicit ec: ExecutionContext): Future[UpdateResponse] = {
     val res = makeApiMethodRequest(
       "chat.update",
       "channel" -> channelId,
       "ts" -> ts,
+      "thread_ts" -> threadTs,
       "text" -> text,
       "as_user" -> asUser,
       "parse" -> parse,
