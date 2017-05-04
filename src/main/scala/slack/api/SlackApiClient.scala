@@ -211,9 +211,19 @@ class SlackApiClient(token: String) {
     extract[String](res, "ts")
   }
 
-  def updateChatMessage(channelId: String, ts: String, text: String, asUser: Option[Boolean] = None)(implicit ec: ExecutionContext): Future[UpdateResponse] = {
-    val params = Seq("channel" -> channelId, "ts" -> ts, "text" -> text)
-    val res = makeApiMethodRequest("chat.update", asUser.map(b => params :+ ("as_user" -> b)).getOrElse(params): _*)
+  def updateChatMessage(channelId: String, ts: String, text: String,
+                        attachments: Option[Seq[Attachment]] = None,
+                        parse: Option[String] = None, linkNames: Option[String] = None,
+                        asUser: Option[Boolean] = None)(implicit ec: ExecutionContext): Future[UpdateResponse] = {
+    val res = makeApiMethodRequest(
+      "chat.update",
+      "channel" -> channelId,
+      "ts" -> ts,
+      "text" -> text,
+      "as_user" -> asUser,
+      "parse" -> parse,
+      "link_names" -> linkNames,
+      "attachments" -> attachments.map(a => Json.stringify(Json.toJson(a))))
     res.map(_.as[UpdateResponse])
   }
 
