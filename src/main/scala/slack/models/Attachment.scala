@@ -17,7 +17,8 @@ case class Attachment (
   actions: Option[Seq[ActionField]] = None,
   mrkdwn_in: Option[Seq[String]] = None,
   footer: Option[String] = None,
-  footer_icon: Option[String] = None
+  footer_icon: Option[String] = None,
+  ts: Option[Long] = None
 )
 
 case class AttachmentField(title: String, value: String, short: Boolean)
