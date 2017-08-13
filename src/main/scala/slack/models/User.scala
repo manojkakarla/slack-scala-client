@@ -20,6 +20,7 @@ case class User (
 )
 
 case class UserProfile (
+  bot_id: Option[String],
   first_name: Option[String],
   last_name: Option[String],
   real_name: Option[String],

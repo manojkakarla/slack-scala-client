@@ -5,15 +5,15 @@ import sbtrelease._
 
 object BuildSettings {
   val buildOrganization = "com.github.gilbertw1"
-  val buildVersion      = "0.1.8"
+  val buildVersion      = "0.1.9"
   val buildScalaVersion = "2.11.8"
 
   val buildSettings = Seq (
-    organization := buildOrganization,
-    version      := buildVersion,
-    scalaVersion := buildScalaVersion,
-    publishMavenStyle := true,
-    publishTo := {
+    organization       := buildOrganization,
+    version            := buildVersion,
+    scalaVersion       := buildScalaVersion,
+    publishMavenStyle  := true,
+    publishTo          := {
       val nexus = "https://oss.sonatype.org/"
       if (isSnapshot.value)
         Some("snapshots" at nexus + "content/repositories/snapshots")
