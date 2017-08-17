@@ -479,7 +479,7 @@ class SlackApiClient(token: String) {
   }
 
   def removePinFromMessage(channelId: String, timestamp: String)(implicit ec: ExecutionContext): Future[Boolean] = {
-    val res = makeApiMethodRequest("pins.remove", "timestamp" -> timestamp)
+    val res = makeApiMethodRequest("pins.remove", "channel" -> channelId, "timestamp" -> timestamp)
     extract[Boolean](res, "ok")
   }
 
