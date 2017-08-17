@@ -19,6 +19,7 @@ object SlackApiClient {
   implicit val filesResponseFmt = Json.format[FilesResponse]
   implicit val fileInfoFmt = Json.format[FileInfo]
   implicit val reactionsResponseFmt = Json.format[ReactionsResponse]
+  implicit val pinsFmt = Json.format[PinsResponse]
 
   val apiBase = url("https://slack.com/api")
 
@@ -449,6 +450,39 @@ class SlackApiClient(token: String) {
     res.map(_.as[HistoryChunk])
   }
 
+  /**************************/
+  /****  Pins Endpoints  ****/
+  /**************************/
+
+  def addPin(channelId: String, file: Option[String] = None, fileComment: Option[String] = None,
+                  timestamp: Option[String] = None)(implicit ec: ExecutionContext): Future[Boolean] = {
+    val res = makeApiMethodRequest("pins.add", "channel" -> channelId,
+      "file" -> file, "file_comment" -> fileComment, "timestamp" -> timestamp)
+    extract[Boolean](res, "ok")
+  }
+
+  def addPinToMessage(channelId: String, timestamp: String)(implicit ec: ExecutionContext): Future[Boolean] = {
+    val res = makeApiMethodRequest("pins.add", "channel" -> channelId, "timestamp" -> timestamp)
+    extract[Boolean](res, "ok")
+  }
+
+  def listPins(channelId: String)(implicit ec: ExecutionContext): Future[PinsResponse] = {
+    val res = makeApiMethodRequest("pins.list", "channel" -> channelId)
+    res.map(_.as[PinsResponse])
+  }
+
+  def removePin(channelId: String, file: Option[String] = None, fileComment: Option[String] = None,
+                timestamp: Option[String] = None)(implicit ec: ExecutionContext): Future[Boolean] = {
+    val res = makeApiMethodRequest("pins.remove", "channel" -> channelId,
+      "file" -> file, "file_comment" -> fileComment, "timestamp" -> timestamp)
+    extract[Boolean](res, "ok")
+  }
+
+  def removePinFromMessage(channelId: String, timestamp: String)(implicit ec: ExecutionContext): Future[Boolean] = {
+    val res = makeApiMethodRequest("pins.remove", "timestamp" -> timestamp)
+    extract[Boolean](res, "ok")
+  }
+
   /******************************/
   /****  Reaction Endpoints  ****/
   /******************************/
@@ -632,6 +666,10 @@ case class FilesResponse (
 case class ReactionsResponse (
   items: Seq[JsValue], // TODO: Parse out each object type w/ reactions
   paging: PagingObject
+)
+
+case class PinsResponse (
+  items: Seq[JsValue]
 )
 
 case class PagingObject (
