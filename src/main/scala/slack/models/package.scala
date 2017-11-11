@@ -122,6 +122,7 @@ package object models {
   implicit val reconnectUrlFmt = Json.format[ReconnectUrl]
   implicit val appsChangedFmt = Json.format[AppsChanged]
   implicit val appsUninstalledFmt = Json.format[AppsUninstalled]
+  implicit val appsInstalledFmt = Json.format[AppsInstalled]
   implicit val desktopNotificationFmt = Json.format[DesktopNotification]
   implicit val UpdateThreadStateFmt = Json.format[UpdateThreadState]
   implicit val OtherEventFmt = Json.format[OtherEvent]
@@ -222,6 +223,7 @@ package object models {
         case e: ReconnectUrl => Json.toJson(e)
         case e: AppsChanged => Json.toJson(e)
         case e: AppsUninstalled => Json.toJson(e)
+        case e: AppsInstalled => Json.toJson(e)
         case e: DesktopNotification => Json.toJson(e)
         case e: UpdateThreadState => Json.toJson(e)
         case e: OtherEvent => Json.toJson(e)
@@ -329,6 +331,7 @@ package object models {
           case "reconnect_url" => JsSuccess(jsValue.as[ReconnectUrl])
           case "apps_changed" => JsSuccess(jsValue.as[AppsChanged])
           case "apps_uninstalled" => JsSuccess(jsValue.as[AppsUninstalled])
+          case "apps_installed" => JsSuccess(jsValue.as[AppsInstalled])
           case "desktop_notification" => JsSuccess(jsValue.as[DesktopNotification])
           case "update_thread_state" => JsSuccess(jsValue.as[UpdateThreadState])
           case t: String => JsSuccess(OtherEvent(t, jsValue))

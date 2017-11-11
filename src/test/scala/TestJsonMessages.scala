@@ -183,8 +183,8 @@ class TestJsonMessages extends FunSuite {
       """{
         |   "type":"message",
         |   "message":{
-        |      "text":"*dkdav2* has accepted New Travel Event for *Dylan Davis* from *Demo Client (demo-client)* in channel: *demo-dkdav22* after: 4m 55s",
-        |      "username":"OK Roger Agents Dev",
+        |      "text":"hello there",
+        |      "username":"Test Dev",
         |      "bot_id":"B1M2TGUN9",
         |      "type":"message",
         |      "subtype":"bot_message",
@@ -194,8 +194,8 @@ class TestJsonMessages extends FunSuite {
         |   "hidden":true,
         |   "channel":"C4MNL9T6Z",
         |   "previous_message":{
-        |      "text":"<@U430KDM7Z>\nNew Travel Event for *Dylan Davis* from *Demo Client*. ",
-        |      "username":"OK Roger Agents Dev",
+        |      "text":"Test Event ",
+        |      "username":"Test Dev",
         |      "bot_id":"B1M2TGUN9",
         |      "attachments":[
         |         {

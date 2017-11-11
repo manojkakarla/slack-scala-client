@@ -16,7 +16,8 @@ case class User (
   has_files: Option[Boolean],
   tz: Option[String],
   tz_offset: Option[Int],
-  presence: Option[String]
+  presence: Option[String],
+  locale: Option[String]
 )
 
 case class UserProfile (

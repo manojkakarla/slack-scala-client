@@ -530,7 +530,7 @@ class SlackApiClient(token: String) {
   /*************************/
 
   def startRealTimeMessageSession()(implicit ec: ExecutionContext): Future[RtmStartState] = {
-    val res = makeApiMethodRequest("rtm.start")
+    val res = makeApiMethodRequest("rtm.start", "include_locale" -> true)
     res.map(_.as[RtmStartState])
   }
 
