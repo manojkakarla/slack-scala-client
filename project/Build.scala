@@ -5,13 +5,15 @@ import sbtrelease._
 
 object BuildSettings {
   val buildOrganization = "com.github.gilbertw1"
-  val buildVersion      = "0.1.9"
-  val buildScalaVersion = "2.11.8"
+  val buildVersion      = "0.2.2"
+  val buildScalaVersion = "2.11.11"
+//  val buildCrossScalaVersions = Seq("2.11.11", "2.12.3")
 
   val buildSettings = Seq (
     organization       := buildOrganization,
     version            := buildVersion,
     scalaVersion       := buildScalaVersion,
+//    crossScalaVersions := buildCrossScalaVersions,
     publishMavenStyle  := true,
     publishTo          := {
       val nexus = "https://oss.sonatype.org/"
@@ -50,24 +52,16 @@ object Resolvers {
 }
 
 object Dependencies {
-  val akkaVersion = "2.4.8"
-  val sprayVersion = "1.3.3"
-  val playVersion = "2.4.6"
+  val akkaActor = "com.typesafe.akka" %% "akka-actor" % "2.5.4"
+  val akkaHttp = "com.typesafe.akka" %% "akka-http-core" % "10.0.10"
 
-  val akkaActor = "com.typesafe.akka" %% "akka-actor" % akkaVersion
-  val akkaSlf4j = "com.typesafe.akka" %% "akka-slf4j" % akkaVersion
+  val scalaAsync = "org.scala-lang.modules" %% "scala-async" % "0.9.6"
+  val playJson = "com.typesafe.play" %% "play-json" % "2.6.3"
 
-  val scalaAsync = "org.scala-lang.modules" %% "scala-async" % "0.9.5"
-  val dispatch = "net.databinder.dispatch" %% "dispatch-core" % "0.11.3"
-  val playJson = "com.typesafe.play" %% "play-json" % playVersion
-  val playWS = "com.typesafe.play" %% "play-ws" % playVersion
+  val scalatest = "org.scalatest" %% "scalatest" % "3.0.0" % "test"
 
-  val sprayWebsocket = "com.wandoulabs.akka" %% "spray-websocket" % "0.1.4"
-
-  val scalatest = "org.scalatest" %% "scalatest" % "2.2.1" % "test"
-
-  val akkaDependencies = Seq(akkaActor, akkaSlf4j)
-  val miscDependencies = Seq(playWS, playJson, scalaAsync, dispatch, sprayWebsocket)
+  val akkaDependencies = Seq(akkaHttp)
+  val miscDependencies = Seq(playJson, scalaAsync)
   val testDependencies = Seq(scalatest)
 
   val allDependencies = akkaDependencies ++ miscDependencies ++ testDependencies
@@ -83,7 +77,6 @@ object SlackScalaClient extends Build {
       .settings ( buildSettings : _* )
       .settings ( resolvers ++= Seq(typesafeRepo) )
       .settings ( libraryDependencies ++= Dependencies.allDependencies )
-      .settings ( dependencyOverrides += "io.spray" %% "spray-can" % Dependencies.sprayVersion)
       .settings ( scalacOptions ++= Seq("-unchecked", "-deprecation", "-Xlint", "-Xfatal-warnings", "-feature") )
 
 }
