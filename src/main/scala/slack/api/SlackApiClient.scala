@@ -1,19 +1,18 @@
 package slack.api
 
 import java.io.File
-import java.nio.charset.StandardCharsets
-import scala.concurrent.duration._
 
+import akka.actor.ActorSystem
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.model._
+import akka.parboiled2.CharPredicate
+import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.Source
 import play.api.libs.json._
 import slack.models._
-import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{ Source, Sink }
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.{ Uri, HttpRequest, HttpResponse, Multipart, HttpEntity, MessageEntity, MediaTypes, HttpMethods }
-import akka.http.scaladsl.model.headers.RawHeader
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
+import scala.concurrent.duration._
 
 object SlackApiClient {
 
@@ -24,8 +23,19 @@ object SlackApiClient {
   private[api] implicit val filesResponseFmt = Json.format[FilesResponse]
   private[api] implicit val fileInfoFmt = Json.format[FileInfo]
   private[api] implicit val reactionsResponseFmt = Json.format[ReactionsResponse]
+  private[api] implicit val pinsResponseFmt = Json.format[PinsResponse]
 
   private val apiBaseRequest = HttpRequest(uri = Uri(s"https://slack.com/api/"))
+
+  /* TEMPORARY WORKAROUND - UrlEncode '?' in query string parameters */
+  val charClassesClass = Class.forName("akka.http.impl.model.parser.CharacterClasses$")
+  val charClassesObject = charClassesClass.getField("MODULE$").get(charClassesClass)
+  //  strict-query-char-np
+  val charPredicateField = charClassesObject.getClass.getDeclaredField("strict$minusquery$minuschar$minusnp")
+  charPredicateField.setAccessible(true)
+  val updatedCharPredicate = charPredicateField.get(charClassesObject).asInstanceOf[CharPredicate] -- '?'
+  charPredicateField.set(charClassesObject, updatedCharPredicate)
+  /* END TEMPORARY WORKAROUND */
 
   def apply(token: String): SlackApiClient = {
     new SlackApiClient(token)
@@ -86,12 +96,12 @@ object SlackApiClient {
   }
 }
 
-import SlackApiClient._
+import slack.api.SlackApiClient._
 
 class SlackApiClient(token: String) {
 
   private val apiBaseWithTokenRequest = apiBaseRequest.withUri(apiBaseRequest.uri.withQuery(
-                                                          Uri.Query((apiBaseRequest.uri.query() :+ ("token" -> token)): _*)))
+    Uri.Query((apiBaseRequest.uri.query() :+ ("token" -> token)): _*)))
 
 
   /**************************/
@@ -205,15 +215,15 @@ class SlackApiClient(token: String) {
   def postChatMessage(channelId: String, text: String, username: Option[String] = None, asUser: Option[Boolean] = None,
       parse: Option[String] = None, linkNames: Option[String] = None, attachments: Option[Seq[Attachment]] = None,
       unfurlLinks: Option[Boolean] = None, unfurlMedia: Option[Boolean] = None, iconUrl: Option[String] = None,
-      iconEmoji: Option[String] = None, replaceOriginal: Option[Boolean]= None, deleteOriginal: Option[Boolean] = None,
-      thread_ts: Option[String] = None)(implicit system: ActorSystem): Future[String] = {
+      iconEmoji: Option[String] = None, replaceOriginal: Option[Boolean]= None,
+      deleteOriginal: Option[Boolean] = None, threadTs: Option[String] = None)(implicit system: ActorSystem): Future[String] = {
     val res = makeApiMethodRequest (
       "chat.postMessage",
       "channel" -> channelId,
       "text" -> text,
       "username" -> username,
       "as_user" -> asUser,
-      "thread_ts" -> thread_ts,
+      "thread_ts" -> threadTs,
       "parse" -> parse,
       "link_names" -> linkNames,
       "attachments" -> attachments.map(a => Json.stringify(Json.toJson(a))),
@@ -230,17 +240,13 @@ class SlackApiClient(token: String) {
                         attachments: Option[Seq[Attachment]] = None,
                         parse: Option[String] = None, linkNames: Option[String] = None,
                         asUser: Option[Boolean] = None,
-                        thread_ts: Option[String] = None)(implicit system: ActorSystem): Future[UpdateResponse] = {
-    val res = makeApiMethodRequest(
-      "chat.update",
-      "channel" -> channelId,
-      "ts" -> ts,
-      "thread_ts" -> thread_ts,
-      "text" -> text,
+                        threadTs: Option[String] = None)(implicit system: ActorSystem): Future[UpdateResponse] = {
+    val res = makeApiMethodRequest("chat.update",
+      "channel" -> channelId, "ts" -> ts, "text" -> text,
+      "attachments" -> attachments.map(a => Json.stringify(Json.toJson(a))),
+      "parse" -> parse, "link_names" -> linkNames,
       "as_user" -> asUser,
-      "parse" -> parse,
-      "link_names" -> linkNames,
-      "attachments" -> attachments.map(a => Json.stringify(Json.toJson(a))))
+      "thread_ts" -> threadTs)
     res.map(_.as[UpdateResponse])(system.dispatcher)
   }
 
@@ -282,18 +288,24 @@ class SlackApiClient(token: String) {
     res.map(_.as[FilesResponse])(system.dispatcher)
   }
 
-  def uploadFile(file: File, content: Option[String] = None, filetype: Option[String] = None, filename: Option[String] = None,
-      title: Option[String] = None, initialComment: Option[String] = None, channels: Option[Seq[String]] = None)(implicit system: ActorSystem): Future[SlackFile] = {
-    val params = Seq (
-      "content" -> content,
+  def uploadFile(content: Either[File, String], filetype: Option[String] = None, filename: Option[String] = None,
+    title: Option[String] = None, initialComment: Option[String] = None, channels: Option[Seq[String]] = None)(implicit system: ActorSystem): Future[SlackFile] = {
+    val params = Seq(
       "filetype" -> filetype,
       "filename" -> filename,
       "title" -> title,
       "initial_comment" -> initialComment,
       "channels" -> channels.map(_.mkString(","))
     )
-    val request = addSegment(apiBaseWithTokenRequest, "files.upload").withEntity(createEntity(file)).withMethod(method = HttpMethods.POST)
-    val res = makeApiRequest(addQueryParams(request, cleanParams(params)))
+
+    val res = content match {
+      case Right(str) =>
+        val request = addSegment(apiBaseWithTokenRequest, "files.upload").withMethod(method = HttpMethods.POST)
+        makeApiRequest(addQueryParams(request, cleanParams(params ++ Seq("content" -> str))))
+      case Left(file) =>
+        val request = addSegment(apiBaseWithTokenRequest, "files.upload").withEntity(createEntity(file)).withMethod(method = HttpMethods.POST)
+        makeApiRequest(addQueryParams(request, cleanParams(params)))
+    }
     extract[SlackFile](res, "file")
   }
 
@@ -462,6 +474,39 @@ class SlackApiClient(token: String) {
     res.map(_.as[HistoryChunk])(system.dispatcher)
   }
 
+  /**************************/
+  /****  Pins Endpoints  ****/
+  /**************************/
+
+  def addPin(channelId: String, file: Option[String] = None, fileComment: Option[String] = None,
+                  timestamp: Option[String] = None)(implicit system: ActorSystem): Future[Boolean] = {
+    val res = makeApiMethodRequest("pins.add", "channel" -> channelId,
+      "file" -> file, "file_comment" -> fileComment, "timestamp" -> timestamp)
+    extract[Boolean](res, "ok")
+  }
+
+  def addPinToMessage(channelId: String, timestamp: String)(implicit system: ActorSystem): Future[Boolean] = {
+    val res = makeApiMethodRequest("pins.add", "channel" -> channelId, "timestamp" -> timestamp)
+    extract[Boolean](res, "ok")
+  }
+
+  def listPins(channelId: String)(implicit system: ActorSystem): Future[PinsResponse] = {
+    val res = makeApiMethodRequest("pins.list", "channel" -> channelId)
+    res.map(_.as[PinsResponse])(system.dispatcher)
+  }
+
+  def removePin(channelId: String, file: Option[String] = None, fileComment: Option[String] = None,
+                timestamp: Option[String] = None)(implicit system: ActorSystem): Future[Boolean] = {
+    val res = makeApiMethodRequest("pins.remove", "channel" -> channelId,
+      "file" -> file, "file_comment" -> fileComment, "timestamp" -> timestamp)
+    extract[Boolean](res, "ok")
+  }
+
+  def removePinFromMessage(channelId: String, timestamp: String)(implicit system: ActorSystem): Future[Boolean] = {
+    val res = makeApiMethodRequest("pins.remove", "channel" -> channelId, "timestamp" -> timestamp)
+    extract[Boolean](res, "ok")
+  }
+
   /******************************/
   /****  Reaction Endpoints  ****/
   /******************************/
@@ -509,7 +554,7 @@ class SlackApiClient(token: String) {
   /*************************/
 
   def startRealTimeMessageSession()(implicit system: ActorSystem): Future[RtmStartState] = {
-    val res = makeApiMethodRequest("rtm.start")
+    val res = makeApiMethodRequest("rtm.start", "include_locale" -> true)
     res.map(_.as[RtmStartState])(system.dispatcher)
   }
 
@@ -655,6 +700,10 @@ case class FilesResponse (
 case class ReactionsResponse (
   items: Seq[JsValue], // TODO: Parse out each object type w/ reactions
   paging: PagingObject
+)
+
+case class PinsResponse (
+  items: Seq[JsValue]
 )
 
 case class PagingObject (

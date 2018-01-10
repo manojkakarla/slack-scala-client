@@ -11,11 +11,14 @@ case class Attachment (
   title: Option[String] = None,
   title_link: Option[String] = None,
   text: Option[String] = None,
-  fields: Seq[AttachmentField] = Seq.empty,
+  fields: Option[Seq[AttachmentField]] = None,
   image_url: Option[String] = None,
   thumb_url: Option[String] = None,
-  actions: Seq[ActionField] = Seq.empty,
-  mrkdwn_in: Seq[String] = Seq.empty
+  actions: Option[Seq[ActionField]] = None,
+  mrkdwn_in: Option[Seq[String]] = None,
+  footer: Option[String] = None,
+  footer_icon: Option[String] = None,
+  ts: Option[Long] = None
 )
 
 case class AttachmentField(title: String, value: String, short: Boolean)
@@ -23,7 +26,14 @@ case class AttachmentField(title: String, value: String, short: Boolean)
 case class ActionField(name: String,
                        text: String, `type`: String,
                        style: Option[String] = None,
-                       value: Option[String] = None, confirm: Option[ConfirmField] = None)
+                       value: Option[String] = None,
+                       data_source: Option[String] = None,
+                       min_query_length: Option[Int] = None,
+                       options: Option[Seq[OptionField]] = None,
+                       selected_options: Option[Seq[OptionField]] = None,
+                       confirm: Option[ConfirmField] = None)
+
+case class OptionField(text: String, value: String)
 
 case class ConfirmField(text: String, title: Option[String] = None,
                         ok_text: Option[String] = None, cancel_text: Option[String] = None)

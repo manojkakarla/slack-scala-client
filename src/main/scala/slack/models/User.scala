@@ -16,16 +16,21 @@ case class User (
   has_files: Option[Boolean],
   tz: Option[String],
   tz_offset: Option[Int],
-  presence: Option[String]
+  presence: Option[String],
+  locale: Option[String]
 )
 
 case class UserProfile (
+  bot_id: Option[String],
   first_name: Option[String],
   last_name: Option[String],
   real_name: Option[String],
+  display_name: Option[String],
   email: Option[String],
   skype: Option[String],
   phone: Option[String],
+  status_emoji: Option[String],
+  status_text: Option[String],
   image_24: String,
   image_32: String,
   image_48: String,

@@ -50,7 +50,7 @@ class SlackRtmClientTest extends FunSuite {
 
   ignore("edit message as bot") {
     val rtmApi = SlackApiClient(rtmToken)
-    val future = rtmApi.updateChatMessage(channel, "1465891701.000006", "edit-x", Some(true))
+    val future = rtmApi.updateChatMessage(channel, "1465891701.000006", "edit-x", asUser = Some(true))
     val result = Await.result(future, 5.seconds)
     assert(result.ok.equals(true))
   }

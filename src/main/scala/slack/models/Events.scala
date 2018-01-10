@@ -20,9 +20,12 @@ case class Message (
 ) extends SlackEvent
 
 case class EditMessage (
-  user: String,
+  ts:String,
   text: String,
-  ts:String
+  user: Option[String],
+  bot_id: Option[String],
+  subtype: Option[String],
+  attachments: Option[Seq[Attachment]]
 )
 
 case class MessageChanged (
@@ -38,6 +41,28 @@ case class MessageDeleted (
   deleted_ts: String,
   event_ts: String,
   channel: String
+) extends SlackEvent
+
+case class ThreadReply (
+  user: String,
+  ts: String
+)
+
+case class ReplyMessage (
+  user: String,
+  ts: String,
+  thread_ts: String,
+  reply_count: Int,
+  unread_count: Int,
+  replies: Seq[ThreadReply]
+)
+
+case class MessageReplied (
+  message: ReplyMessage,
+  ts: String,
+  event_ts: String,
+  channel: String,
+  hidden:Option[Boolean]
 ) extends SlackEvent
 
 case class BotMessage (
@@ -388,16 +413,15 @@ case class AppsInstalled(
 ) extends SlackEvent
 
 case class DesktopNotification(
-  `type`: String,
   title: String,
-  subtitle: String,
-  msg: String,
-  content: String,
-  channel: String,
-  launchUri: String,
-  avatarImage: String,
-  ssbFilename: String,
-  imageUrl: Option[String],
-  is_shared: Boolean,
   event_ts: String
+) extends SlackEvent
+
+case class UpdateThreadState(
+  event_ts: String
+) extends SlackEvent
+
+case class OtherEvent(
+  `type`: String,
+  raw: JsValue
 ) extends SlackEvent

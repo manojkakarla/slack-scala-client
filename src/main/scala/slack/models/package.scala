@@ -1,9 +1,11 @@
 package slack
 
+import play.api.data.validation.ValidationError
 import play.api.libs.json._
 
 package object models {
   implicit val confirmFieldFmt = Json.format[ConfirmField]
+  implicit val optionFieldFmt = Json.format[OptionField]
   implicit val actionFieldFmt = Json.format[ActionField]
   implicit val attachmentFieldFmt = Json.format[AttachmentField]
   implicit val attachmentFmt = Json.format[Attachment]
@@ -33,10 +35,10 @@ package object models {
           case "message" => JsSuccess(json.as[ReactionItemMessage])
           case "file" => JsSuccess(json.as[ReactionItemFile])
           case "file_comment" => JsSuccess(json.as[ReactionItemFileComment])
-          case t: String => JsError(JsonValidationError("Invalid type property: {}", t))
+          case t: String => JsError(ValidationError("Invalid type property: {}", t))
         }
       } else {
-        JsError(JsonValidationError("Required (string) event type property is missing."))
+        JsError(ValidationError("Required (string) event type property is missing."))
       }
     }
   }
@@ -56,6 +58,9 @@ package object models {
   implicit val botMessageFmt = Json.format[BotMessage]
   implicit val messageChangedFmt = Json.format[MessageChanged]
   implicit val messageDeletedFmt = Json.format[MessageDeleted]
+  implicit val threadReplyFmt = Json.format[ThreadReply]
+  implicit val replyMessageFmt = Json.format[ReplyMessage]
+  implicit val messageRepliedFmt = Json.format[MessageReplied]
   implicit val reactionAddedFmt = Json.format[ReactionAdded]
   implicit val reactionRemovedFmt = Json.format[ReactionRemoved]
   implicit val userTypingFmt = Json.format[UserTyping]
@@ -119,6 +124,8 @@ package object models {
   implicit val appsUninstalledFmt = Json.format[AppsUninstalled]
   implicit val appsInstalledFmt = Json.format[AppsInstalled]
   implicit val desktopNotificationFmt = Json.format[DesktopNotification]
+  implicit val UpdateThreadStateFmt = Json.format[UpdateThreadState]
+  implicit val OtherEventFmt = Json.format[OtherEvent]
 
   // Message sub-types
   import MessageSubtypes._
@@ -148,6 +155,7 @@ package object models {
         case e: Reply => Json.toJson(e)
         case e: MessageChanged => Json.toJson(e)
         case e: MessageDeleted => Json.toJson(e)
+        case e: MessageReplied => Json.toJson(e)
         case e: BotMessage => Json.toJson(e)
         case e: MessageWithSubtype => Json.toJson(e)
         case e: MeMessage => Json.toJson(e)
@@ -217,6 +225,8 @@ package object models {
         case e: AppsUninstalled => Json.toJson(e)
         case e: AppsInstalled => Json.toJson(e)
         case e: DesktopNotification => Json.toJson(e)
+        case e: UpdateThreadState => Json.toJson(e)
+        case e: OtherEvent => Json.toJson(e)
       }
     }
   }
@@ -256,6 +266,7 @@ package object models {
           case "hello" => JsSuccess(jsValue.as[Hello])
           case "message" if subtype.contains("message_changed") => JsSuccess(jsValue.as[MessageChanged])
           case "message" if subtype.contains("message_deleted") => JsSuccess(jsValue.as[MessageDeleted])
+          case "message" if subtype.contains("message_replied") => JsSuccess(jsValue.as[MessageReplied])
           case "message" if subtype.contains("bot_message") => JsSuccess(jsValue.as[BotMessage])
           case "message" if subtype.isDefined => JsSuccess(jsValue.as[MessageWithSubtype])
           case "message" => JsSuccess(jsValue.as[Message])
@@ -322,12 +333,13 @@ package object models {
           case "apps_uninstalled" => JsSuccess(jsValue.as[AppsUninstalled])
           case "apps_installed" => JsSuccess(jsValue.as[AppsInstalled])
           case "desktop_notification" => JsSuccess(jsValue.as[DesktopNotification])
-          case t: String => JsError(JsonValidationError("Invalid type property: {}", t))
+          case "update_thread_state" => JsSuccess(jsValue.as[UpdateThreadState])
+          case t: String => JsSuccess(OtherEvent(t, jsValue))
         }
       } else if ((jsValue \ "reply_to").asOpt[Long].isDefined) {
         JsSuccess(jsValue.as[Reply])
       } else {
-        JsError(JsonValidationError("Required (string) event type property is missing."))
+        JsError(ValidationError("Required (string) event type property is missing."))
       }
     }
   }

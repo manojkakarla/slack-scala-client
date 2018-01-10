@@ -1,18 +1,17 @@
 package slack.rtm
 
 import java.net.URI
-import scala.collection.mutable.{ Set => MSet }
-import scala.concurrent.Future
-import scala.concurrent.duration._
-import scala.util.{ Try, Success, Failure }
 
-import akka.actor.{ Actor, ActorRef, ActorRefFactory, ActorLogging, Props, Terminated }
-import akka.{ Done, NotUsed }
+import akka.Done
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorRefFactory, Props}
 import akka.http.scaladsl.Http
-import akka.stream.{ ActorMaterializer, OverflowStrategy }
-import akka.stream.scaladsl._
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.ws.{ Message, TextMessage, WebSocketRequest }
+import akka.http.scaladsl.model.ws.{Message, TextMessage, WebSocketRequest}
+import akka.stream.scaladsl._
+import akka.stream.{ActorMaterializer, OverflowStrategy}
+
+import scala.concurrent.Future
+import scala.util.{Failure, Success}
 
 private[rtm] object WebSocketClientActor {
   case class SendWSMessage(message: Message)
@@ -27,28 +26,27 @@ private[rtm] object WebSocketClientActor {
   case object WebSocketConnectFailure
   case object WebSocketDisconnected
 
-  def apply(url: String, listeners: Seq[ActorRef])(implicit arf: ActorRefFactory): ActorRef = {
-    arf.actorOf(Props(new WebSocketClientActor(url, listeners)))
+  def apply(url: String, domain: String)(implicit arf: ActorRefFactory): ActorRef = {
+    arf.actorOf(Props(new WebSocketClientActor(url, domain: String)))
   }
 }
 
-import WebSocketClientActor._
+import slack.rtm.WebSocketClientActor._
 
-private[rtm] class WebSocketClientActor(url: String, initialListeners: Seq[ActorRef]) extends Actor with ActorLogging {
+private[rtm] class WebSocketClientActor(url: String, domain: String) extends Actor with ActorLogging {
   implicit val ec = context.dispatcher
   implicit val system = context.system
   implicit val materalizer = ActorMaterializer()
 
-  val listeners = MSet[ActorRef](initialListeners: _*)
   val uri = new URI(url)
   var outboundMessageQueue: Option[SourceQueueWithComplete[Message]] = None
 
   override def receive = {
     case m: TextMessage =>
-      log.debug("[WebSocketClientActor] Received Text Message: {}", m)
-      sendToListeners(m)
+      log.debug(s"[WebSocketClientActor][$domain] Received Text Message: {}", m)
+      context.parent ! m
     case m: Message =>
-      log.debug("[WebsocketClientActor] Received Message: {}", m)
+      log.debug(s"[WebsocketClientActor][$domain] Received Message: {}", m)
     case SendWSMessage(m) =>
       if (outboundMessageQueue.isDefined) {
         outboundMessageQueue.get.offer(m)
@@ -56,25 +54,11 @@ private[rtm] class WebSocketClientActor(url: String, initialListeners: Seq[Actor
     case WebSocketConnectSuccess(queue, closed) =>
       outboundMessageQueue = Some(queue)
       closed.onComplete(_ => self ! WebSocketDisconnected)
-      sendToListeners(WebSocketClientConnected)
-    case WebSocketConnectFailure =>
-      sendToListeners(WebSocketClientConnectFailed)
+      context.parent ! WebSocketClientConnected
     case WebSocketDisconnected =>
-      log.info("[WebSocketClientActor] WebSocket disconnected.")
+      log.info(s"[WebSocketClientActor][$domain] WebSocket disconnected.")
       context.stop(self)
-    case RegisterWebsocketListener(listener) =>
-      log.info("[WebSocketClientActor] Registering listener")
-      listeners += listener
-      context.watch(listener)
-    case DeregisterWebsocketListener(listener) =>
-      listeners -= listener
-    case Terminated(actor) =>
-      listeners -= actor
     case _ =>
-  }
-
-  def sendToListeners(m: Any) {
-    listeners.foreach(_ ! m)
   }
 
   def connectWebSocket() {
@@ -95,25 +79,26 @@ private[rtm] class WebSocketClientActor(url: String, initialListeners: Seq[Actor
 
     upgradeResponse.onComplete {
       case Success(upgrade) if upgrade.response.status == StatusCodes.SwitchingProtocols =>
-        log.info("[WebSocketClientActor] Web socket connection success")
+        log.info(s"[WebSocketClientActor][$domain] Web socket connection success")
         self ! WebSocketConnectSuccess(messageSourceQueue, closed)
       case Success(upgrade) =>
-        log.info("[WebSocketClientActor] Web socket connection failed: {}", upgrade.response)
-        self ! WebSocketConnectFailure
+        log.info(s"[WebSocketClientActor][$domain] Web socket connection failed for: {}", upgrade.response)
+        context.parent ! WebSocketClientConnectFailed
+        context.stop(self)
       case Failure(err) =>
-        log.info("[WebSocketClientActor] Web socket connection failed with error: {}", err.getMessage)
-        self ! WebSocketConnectFailure
+        log.info(s"[WebSocketClientActor][$domain] Web socket connection failed with error: {}", err.getMessage)
+        context.parent ! WebSocketClientConnectFailed
+        context.stop(self)
     }
   }
 
   override def preStart() {
-    log.info("WebSocketClientActor] Connecting to RTM: {}", url)
+    log.info(s"WebSocketClientActor][$domain] Connecting to RTM: {}", url)
     connectWebSocket()
   }
 
   override def postStop() {
     outboundMessageQueue.foreach(_.complete)
-    log.info("[WebSocketClientActor] Stopping and notifying listeners.")
-    sendToListeners(WebSocketClientDisconnected)
+    context.parent ! WebSocketClientDisconnected
   }
 }

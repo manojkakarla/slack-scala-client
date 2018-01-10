@@ -4,7 +4,7 @@ import slack.models._
 
 import java.io.File
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.{Await, Future}
 
 import akka.actor.ActorSystem
 import play.api.libs.json._
@@ -20,8 +20,6 @@ object BlockingSlackApiClient {
     Await.result(SlackApiClient.exchangeOauthForToken(clientId, clientSecret, code, redirectUri), duration)
   }
 }
-
-import SlackApiClient._
 
 class BlockingSlackApiClient(token: String, duration: FiniteDuration = 5.seconds) {
   val client = new SlackApiClient(token)
@@ -150,9 +148,8 @@ class BlockingSlackApiClient(token: String, duration: FiniteDuration = 5.seconds
   }
 
   def uploadFile(file: File)(implicit system: ActorSystem): SlackFile = {
-    resolve(client.uploadFile(file))
+    resolve(client.uploadFile(Left(file)))
   }
-
 
   /***************************/
   /****  Group Endpoints  ****/
