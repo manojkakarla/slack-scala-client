@@ -1,5 +1,6 @@
 package slack
 
+import play.api.data.validation.ValidationError
 import play.api.libs.json._
 
 package object models {
@@ -34,10 +35,10 @@ package object models {
           case "message" => JsSuccess(json.as[ReactionItemMessage])
           case "file" => JsSuccess(json.as[ReactionItemFile])
           case "file_comment" => JsSuccess(json.as[ReactionItemFileComment])
-          case t: String => JsError(JsonValidationError("Invalid type property: {}", t))
+          case t: String => JsError(ValidationError("Invalid type property: {}", t))
         }
       } else {
-        JsError(JsonValidationError("Required (string) event type property is missing."))
+        JsError(ValidationError("Required (string) event type property is missing."))
       }
     }
   }
@@ -338,7 +339,7 @@ package object models {
       } else if ((jsValue \ "reply_to").asOpt[Long].isDefined) {
         JsSuccess(jsValue.as[Reply])
       } else {
-        JsError(JsonValidationError("Required (string) event type property is missing."))
+        JsError(ValidationError("Required (string) event type property is missing."))
       }
     }
   }

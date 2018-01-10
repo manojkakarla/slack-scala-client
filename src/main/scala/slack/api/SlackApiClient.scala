@@ -241,12 +241,12 @@ class SlackApiClient(token: String) {
                         parse: Option[String] = None, linkNames: Option[String] = None,
                         asUser: Option[Boolean] = None,
                         threadTs: Option[String] = None)(implicit system: ActorSystem): Future[UpdateResponse] = {
-    val params = Seq("channel" -> channelId, "ts" -> ts, "text" -> text,
-      "attachments" -> attachments,
+    val res = makeApiMethodRequest("chat.update",
+      "channel" -> channelId, "ts" -> ts, "text" -> text,
+      "attachments" -> attachments.map(a => Json.stringify(Json.toJson(a))),
       "parse" -> parse, "link_names" -> linkNames,
       "as_user" -> asUser,
       "thread_ts" -> threadTs)
-    val res = makeApiMethodRequest("chat.update", params: _*)
     res.map(_.as[UpdateResponse])(system.dispatcher)
   }
 
