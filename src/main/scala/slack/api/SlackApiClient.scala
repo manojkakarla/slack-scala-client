@@ -22,6 +22,7 @@ object SlackApiClient {
   private[api] implicit val pagingObjectFmt = Json.format[PagingObject]
   private[api] implicit val filesResponseFmt = Json.format[FilesResponse]
   private[api] implicit val fileInfoFmt = Json.format[FileInfo]
+  private[api] implicit val migrationExchangeResponseFmt = Json.format[MigrationExchangeResponse]
   private[api] implicit val reactionsResponseFmt = Json.format[ReactionsResponse]
   private[api] implicit val pinsResponseFmt = Json.format[PinsResponse]
 
@@ -438,6 +439,15 @@ class SlackApiClient(token: String) {
     res.map(r => (r \ "channel" \ "id").as[String])(system.dispatcher)
   }
 
+  /*******************************/
+  /****  Migration Endpoints  ****/
+  /*******************************/
+
+  def exchangeUserIds(userIds: Seq[String], toOld: Boolean = false)(implicit system: ActorSystem): Future[MigrationExchangeResponse] = {
+    val res = makeApiMethodRequest("migration.exchange", "users" -> userIds.mkString(","), "to_old" -> toOld)
+    res.map(_.as[MigrationExchangeResponse])(system.dispatcher)
+  }
+
   /**************************/
   /****  MPIM Endpoints  ****/
   /**************************/
@@ -677,7 +687,7 @@ class SlackApiClient(token: String) {
   }
 }
 
-case class InvalidResponseError(status: Int, body: String) extends Exception(s"Bad status code from Slack: ${status}")
+case class InvalidResponseError(status: Int, body: String) extends Exception(s"Bad status code from Slack: $status")
 case class ApiError(code: String) extends Exception(code)
 
 case class HistoryChunk (
@@ -695,6 +705,13 @@ case class FileInfo (
 case class FilesResponse (
   files: Seq[SlackFile],
   paging: PagingObject
+)
+
+case class MigrationExchangeResponse (
+  team_id: String,
+  enterprise_id: String,
+  user_id_map: Map[String, String],
+  invalid_user_ids: Option[Seq[String]]
 )
 
 case class ReactionsResponse (
