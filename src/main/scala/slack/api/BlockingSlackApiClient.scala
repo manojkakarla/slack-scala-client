@@ -1,13 +1,12 @@
 package slack.api
 
+import java.io.File
+
+import play.api.libs.json._
 import slack.models._
 
-import java.io.File
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
-
-import akka.actor.ActorSystem
-import play.api.libs.json._
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 object BlockingSlackApiClient {
 
@@ -16,10 +15,12 @@ object BlockingSlackApiClient {
   }
 
   def exchangeOauthForToken(clientId: String, clientSecret: String, code: String, redirectUri: Option[String] = None,
-      duration: FiniteDuration = 5.seconds)(implicit system: ActorSystem): AccessToken = {
+      duration: FiniteDuration = 5.seconds)(implicit ec: ExecutionContext): AccessToken = {
     Await.result(SlackApiClient.exchangeOauthForToken(clientId, clientSecret, code, redirectUri), duration)
   }
 }
+
+import SlackApiClient._
 
 class BlockingSlackApiClient(token: String, duration: FiniteDuration = 5.seconds) {
   val client = new SlackApiClient(token)
@@ -29,11 +30,11 @@ class BlockingSlackApiClient(token: String, duration: FiniteDuration = 5.seconds
   /***   Test Endpoints   ***/
   /**************************/
 
-  def test()(implicit system: ActorSystem): Boolean = {
+  def test()(implicit ec: ExecutionContext): Boolean = {
     resolve(client.test())
   }
 
-  def testAuth()(implicit system: ActorSystem): AuthIdentity = {
+  def testAuth()(implicit ec: ExecutionContext): AuthIdentity = {
     resolve(client.testAuth())
   }
 
@@ -42,61 +43,61 @@ class BlockingSlackApiClient(token: String, duration: FiniteDuration = 5.seconds
   /***  Channel Endpoints  ***/
   /***************************/
 
-  def archiveChannel(channelId: String)(implicit system: ActorSystem): Boolean = {
+  def archiveChannel(channelId: String)(implicit ec: ExecutionContext): Boolean = {
     resolve(client.archiveChannel(channelId))
   }
 
-  def createChannel(name: String)(implicit system: ActorSystem): Channel = {
+  def createChannel(name: String)(implicit ec: ExecutionContext): Channel = {
     resolve(client.createChannel(name))
   }
 
   def getChannelHistory(channelId: String, latest: Option[String] = None, oldest: Option[String] = None,
-      inclusive: Option[Int] = None, count: Option[Int] = None)(implicit system: ActorSystem): HistoryChunk = {
+      inclusive: Option[Int] = None, count: Option[Int] = None)(implicit ec: ExecutionContext): HistoryChunk = {
     resolve(client.getChannelHistory(channelId, latest, oldest, inclusive, count))
   }
 
-  def getChannelInfo(channelId: String)(implicit system: ActorSystem): Channel = {
+  def getChannelInfo(channelId: String)(implicit ec: ExecutionContext): Channel = {
     resolve(client.getChannelInfo(channelId))
   }
 
-  def inviteToChannel(channelId: String, userId: String)(implicit system: ActorSystem): Channel = {
+  def inviteToChannel(channelId: String, userId: String)(implicit ec: ExecutionContext): Channel = {
     resolve(client.inviteToChannel(channelId, userId))
   }
 
-  def joinChannel(channelId: String)(implicit system: ActorSystem): Channel = {
+  def joinChannel(channelId: String)(implicit ec: ExecutionContext): Channel = {
     resolve(client.joinChannel(channelId))
   }
 
-  def kickFromChannel(channelId: String, userId: String)(implicit system: ActorSystem): Boolean = {
+  def kickFromChannel(channelId: String, userId: String)(implicit ec: ExecutionContext): Boolean = {
     resolve(client.kickFromChannel(channelId, userId))
   }
 
-  def listChannels(excludeArchived: Int = 0)(implicit system: ActorSystem): Seq[Channel] = {
+  def listChannels(excludeArchived: Int = 0)(implicit ec: ExecutionContext): Seq[Channel] = {
     resolve(client.listChannels(excludeArchived))
   }
 
-  def leaveChannel(channelId: String)(implicit system: ActorSystem): Boolean = {
+  def leaveChannel(channelId: String)(implicit ec: ExecutionContext): Boolean = {
     resolve(client.leaveChannel(channelId))
   }
 
-  def markChannel(channelId: String, ts: String)(implicit system: ActorSystem): Boolean = {
+  def markChannel(channelId: String, ts: String)(implicit ec: ExecutionContext): Boolean = {
     resolve(client.markChannel(channelId, ts))
   }
 
   // TODO: Lite Channel Object
-  def renameChannel(channelId: String, name: String)(implicit system: ActorSystem): Boolean = {
+  def renameChannel(channelId: String, name: String)(implicit ec: ExecutionContext): Boolean = {
     resolve(client.renameChannel(channelId, name))
   }
 
-  def setChannelPurpose(channelId: String, purpose: String)(implicit system: ActorSystem): String = {
+  def setChannelPurpose(channelId: String, purpose: String)(implicit ec: ExecutionContext): String = {
     resolve(client.setChannelPurpose(channelId, purpose))
   }
 
-  def setChannelTopic(channelId: String, topic: String)(implicit system: ActorSystem): String = {
+  def setChannelTopic(channelId: String, topic: String)(implicit ec: ExecutionContext): String = {
     resolve(client.setChannelTopic(channelId, topic))
   }
 
-  def unarchiveChannel(channelId: String)(implicit system: ActorSystem): Boolean = {
+  def unarchiveChannel(channelId: String)(implicit ec: ExecutionContext): Boolean = {
     resolve(client.unarchiveChannel(channelId))
   }
 
@@ -105,18 +106,18 @@ class BlockingSlackApiClient(token: String, duration: FiniteDuration = 5.seconds
   /****  Chat Endpoints  ****/
   /**************************/
 
-  def deleteChat(channelId: String, ts: String)(implicit system: ActorSystem): Boolean = {
+  def deleteChat(channelId: String, ts: String)(implicit ec: ExecutionContext): Boolean = {
     resolve(client.deleteChat(channelId, ts))
   }
 
   def postChatMessage(channelId: String, text: String, username: Option[String] = None, asUser: Option[Boolean] = None,
       parse: Option[String] = None, linkNames: Option[String] = None, attachments: Option[Seq[Attachment]] = None,
       unfurlLinks: Option[Boolean] = None, unfurlMedia: Option[Boolean] = None, iconUrl: Option[String] = None,
-      iconEmoji: Option[String] = None)(implicit system: ActorSystem): String = {
+      iconEmoji: Option[String] = None)(implicit ec: ExecutionContext): String = {
     resolve(client.postChatMessage(channelId, text, username, asUser, parse, linkNames, attachments, unfurlLinks, unfurlMedia, iconUrl, iconEmoji))
   }
 
-  def updateChatMessage(channelId: String, ts: String, text: String)(implicit system: ActorSystem): UpdateResponse = {
+  def updateChatMessage(channelId: String, ts: String, text: String)(implicit ec: ExecutionContext): UpdateResponse = {
     resolve(client.updateChatMessage(channelId, ts, text))
   }
 
@@ -125,7 +126,7 @@ class BlockingSlackApiClient(token: String, duration: FiniteDuration = 5.seconds
   /****  Emoji Endpoints  ****/
   /***************************/
 
-  def listEmojis()(implicit system: ActorSystem): Map[String,String] = {
+  def listEmojis()(implicit ec: ExecutionContext): Map[String,String] = {
     resolve(client.listEmojis())
   }
 
@@ -134,90 +135,91 @@ class BlockingSlackApiClient(token: String, duration: FiniteDuration = 5.seconds
   /****  File Endpoints  ****/
   /**************************/
 
-  def deleteFile(fileId: String)(implicit system: ActorSystem): Boolean = {
+  def deleteFile(fileId: String)(implicit ec: ExecutionContext): Boolean = {
     resolve(client.deleteFile(fileId))
   }
 
-  def getFileInfo(fileId: String, count: Option[Int] = None, page: Option[Int] = None)(implicit system: ActorSystem): FileInfo = {
+  def getFileInfo(fileId: String, count: Option[Int] = None, page: Option[Int] = None)(implicit ec: ExecutionContext): FileInfo = {
     resolve(client.getFileInfo(fileId, count, page))
   }
 
   def listFiles(userId: Option[String] = None, tsFrom: Option[String] = None, tsTo: Option[String] = None, types: Option[Seq[String]] = None,
-      count: Option[Int] = None, page: Option[Int] = None)(implicit system: ActorSystem): FilesResponse = {
+      count: Option[Int] = None, page: Option[Int] = None)(implicit ec: ExecutionContext): FilesResponse = {
     resolve(client.listFiles(userId, tsFrom, tsTo, types, count, page))
   }
 
-  def uploadFile(file: File)(implicit system: ActorSystem): SlackFile = {
+  def uploadFile(file: File)(implicit ec: ExecutionContext): SlackFile = {
     resolve(client.uploadFile(Left(file)))
   }
+
 
   /***************************/
   /****  Group Endpoints  ****/
   /***************************/
 
-  def archiveGroup(channelId: String)(implicit system: ActorSystem): Boolean = {
+  def archiveGroup(channelId: String)(implicit ec: ExecutionContext): Boolean = {
     resolve(client.archiveGroup(channelId))
   }
 
-  def closeGroup(channelId: String)(implicit system: ActorSystem): Boolean = {
+  def closeGroup(channelId: String)(implicit ec: ExecutionContext): Boolean = {
     resolve(client.closeGroup(channelId))
   }
 
-  def createGroup(name: String)(implicit system: ActorSystem): Group = {
+  def createGroup(name: String)(implicit ec: ExecutionContext): Group = {
     resolve(client.createGroup(name))
   }
 
-  def createChildGroup(channelId: String)(implicit system: ActorSystem): Group = {
+  def createChildGroup(channelId: String)(implicit ec: ExecutionContext): Group = {
     resolve(client.createChildGroup(channelId))
   }
 
   def getGroupHistory(channelId: String, latest: Option[String] = None, oldest: Option[String] = None,
-      inclusive: Option[Int] = None, count: Option[Int] = None)(implicit system: ActorSystem): HistoryChunk = {
+      inclusive: Option[Int] = None, count: Option[Int] = None)(implicit ec: ExecutionContext): HistoryChunk = {
     resolve(client.getGroupHistory(channelId, latest, oldest, inclusive, count))
   }
 
-  def getGroupInfo(channelId: String)(implicit system: ActorSystem): Group = {
+  def getGroupInfo(channelId: String)(implicit ec: ExecutionContext): Group = {
     resolve(client.getGroupInfo(channelId))
   }
 
-  def inviteToGroup(channelId: String, userId: String)(implicit system: ActorSystem): Group = {
+  def inviteToGroup(channelId: String, userId: String)(implicit ec: ExecutionContext): Group = {
     resolve(client.inviteToGroup(channelId, userId))
   }
 
-  def kickFromGroup(channelId: String, userId: String)(implicit system: ActorSystem): Boolean = {
+  def kickFromGroup(channelId: String, userId: String)(implicit ec: ExecutionContext): Boolean = {
     resolve(client.kickFromGroup(channelId, userId))
   }
 
-  def leaveGroup(channelId: String)(implicit system: ActorSystem): Boolean = {
+  def leaveGroup(channelId: String)(implicit ec: ExecutionContext): Boolean = {
     resolve(client.leaveGroup(channelId))
   }
 
-  def listGroups(excludeArchived: Int = 0)(implicit system: ActorSystem): Seq[Group] = {
+  def listGroups(excludeArchived: Int = 0)(implicit ec: ExecutionContext): Seq[Group] = {
     resolve(client.listGroups(excludeArchived))
   }
 
-  def markGroup(channelId: String, ts: String)(implicit system: ActorSystem): Boolean = {
+  def markGroup(channelId: String, ts: String)(implicit ec: ExecutionContext): Boolean = {
     resolve(client.markGroup(channelId, ts))
   }
 
-  def openGroup(channelId: String)(implicit system: ActorSystem): Boolean = {
+  def openGroup(channelId: String)(implicit ec: ExecutionContext): Boolean = {
     resolve(client.openGroup(channelId))
   }
 
   // TODO: Lite Group Object
-  def renameGroup(channelId: String, name: String)(implicit system: ActorSystem): Boolean = {
+  def renameGroup(channelId: String, name: String)(implicit ec: ExecutionContext): Boolean = {
     resolve(client.renameGroup(channelId, name))
   }
 
-  def setGroupPurpose(channelId: String, purpose: String)(implicit system: ActorSystem): String = {
+  def setGroupPurpose(channelId: String, purpose: String)(implicit ec: ExecutionContext): String = {
     resolve(client.setGroupPurpose(channelId, purpose))
   }
 
-  def setGroupTopic(channelId: String, topic: String)(implicit system: ActorSystem): String = {
+  def setGroupTopic(channelId: String, topic: String)(implicit ec: ExecutionContext): String = {
     resolve(client.setGroupTopic(channelId, topic))
   }
 
-  def unarchiveGroup(channelId: String)(implicit system: ActorSystem): Boolean = {
+  def unarchiveGroup(channelId: String)(implicit ec: ExecutionContext): Boolean = {
     resolve(client.unarchiveGroup(channelId))
   }
 
@@ -225,24 +227,24 @@ class BlockingSlackApiClient(token: String, duration: FiniteDuration = 5.seconds
   /****  IM Endpoints  ****/
   /************************/
 
-  def closeIm(channelId: String)(implicit system: ActorSystem): Boolean = {
+  def closeIm(channelId: String)(implicit ec: ExecutionContext): Boolean = {
     resolve(client.closeIm(channelId))
   }
 
   def getImHistory(channelId: String, latest: Option[String] = None, oldest: Option[String] = None,
-      inclusive: Option[Int] = None, count: Option[Int] = None)(implicit system: ActorSystem): HistoryChunk = {
+      inclusive: Option[Int] = None, count: Option[Int] = None)(implicit ec: ExecutionContext): HistoryChunk = {
     resolve(client.getImHistory(channelId, latest, oldest, inclusive, count))
   }
 
-  def listIms()(implicit system: ActorSystem): Seq[Im] = {
+  def listIms()(implicit ec: ExecutionContext): Seq[Im] = {
     resolve(client.listIms())
   }
 
-  def markIm(channelId: String, ts: String)(implicit system: ActorSystem): Boolean = {
+  def markIm(channelId: String, ts: String)(implicit ec: ExecutionContext): Boolean = {
     resolve(client.markIm(channelId, ts))
   }
 
-  def openIm(userId: String)(implicit system: ActorSystem): String = {
+  def openIm(userId: String)(implicit ec: ExecutionContext): String = {
     resolve(client.openIm(userId))
   }
 
@@ -252,33 +254,33 @@ class BlockingSlackApiClient(token: String, duration: FiniteDuration = 5.seconds
   /******************************/
 
   def addReaction(emojiName: String, file: Option[String] = None, fileComment: Option[String] = None, channelId: Option[String] = None,
-                    timestamp: Option[String] = None)(implicit system: ActorSystem): Boolean = {
+                    timestamp: Option[String] = None)(implicit ec: ExecutionContext): Boolean = {
     resolve(client.addReaction(emojiName, file, fileComment, channelId, timestamp))
   }
 
-  def addReactionToMessage(emojiName: String, channelId: String, timestamp: String)(implicit system: ActorSystem): Boolean = {
+  def addReactionToMessage(emojiName: String, channelId: String, timestamp: String)(implicit ec: ExecutionContext): Boolean = {
     resolve(client.addReactionToMessage(emojiName, channelId, timestamp))
   }
 
   def getReactions(file: Option[String] = None, fileComment: Option[String] = None, channelId: Option[String] = None,
-                    timestamp: Option[String] = None, full: Option[Boolean] = None)(implicit system: ActorSystem): Seq[Reaction] = {
+                    timestamp: Option[String] = None, full: Option[Boolean] = None)(implicit ec: ExecutionContext): Seq[Reaction] = {
     resolve(client.getReactions(file, fileComment, channelId, timestamp, full))
   }
 
-  def getReactionsForMessage(channelId: String, timestamp: String, full: Option[Boolean] = None)(implicit system: ActorSystem): Seq[Reaction] = {
+  def getReactionsForMessage(channelId: String, timestamp: String, full: Option[Boolean] = None)(implicit ec: ExecutionContext): Seq[Reaction] = {
     resolve(client.getReactionsForMessage(channelId, timestamp, full))
   }
 
-  def listReactionsForUser(userId: Option[String], full: Boolean = false, count: Option[Int] = None, page: Option[Int] = None)(implicit system: ActorSystem): ReactionsResponse = {
+  def listReactionsForUser(userId: Option[String], full: Boolean = false, count: Option[Int] = None, page: Option[Int] = None)(implicit ec: ExecutionContext): ReactionsResponse = {
     resolve(client.listReactionsForUser(userId, full, count, page))
   }
 
   def removeReaction(emojiName: String, file: Option[String] = None, fileComment: Option[String] = None, channelId: Option[String] = None,
-                    timestamp: Option[String] = None)(implicit system: ActorSystem): Boolean = {
+                    timestamp: Option[String] = None)(implicit ec: ExecutionContext): Boolean = {
     resolve(client.removeReaction(emojiName, file, fileComment, channelId, timestamp))
   }
 
-  def removeReactionFromMessage(emojiName: String, channelId: String, timestamp: String)(implicit system: ActorSystem): Boolean = {
+  def removeReactionFromMessage(emojiName: String, channelId: String, timestamp: String)(implicit ec: ExecutionContext): Boolean = {
     resolve(client.removeReactionFromMessage(emojiName, channelId, timestamp))
   }
 
@@ -287,7 +289,7 @@ class BlockingSlackApiClient(token: String, duration: FiniteDuration = 5.seconds
   /****  RTM Endpoints  ****/
   /*************************/
 
-  def startRealTimeMessageSession()(implicit system: ActorSystem): RtmStartState = {
+  def startRealTimeMessageSession()(implicit ec: ExecutionContext): RtmStartState = {
     resolve(client.startRealTimeMessageSession())
   }
 
@@ -297,18 +299,18 @@ class BlockingSlackApiClient(token: String, duration: FiniteDuration = 5.seconds
   /****************************/
 
   def searchAll(query: String, sort: Option[String] = None, sortDir: Option[String] = None, highlight: Option[String] = None,
-      count: Option[Int] = None, page: Option[Int] = None)(implicit system: ActorSystem): JsValue = {
+      count: Option[Int] = None, page: Option[Int] = None)(implicit ec: ExecutionContext): JsValue = {
     resolve(client.searchAll(query, sort, sortDir, highlight, count, page))
   }
 
   def searchFiles(query: String, sort: Option[String] = None, sortDir: Option[String] = None, highlight: Option[String] = None,
-      count: Option[Int] = None, page: Option[Int] = None)(implicit system: ActorSystem): JsValue = {
+      count: Option[Int] = None, page: Option[Int] = None)(implicit ec: ExecutionContext): JsValue = {
     resolve(client.searchFiles(query, sort, sortDir, highlight, count, page))
   }
 
   // TODO: Return proper search results (not JsValue)
   def searchMessages(query: String, sort: Option[String] = None, sortDir: Option[String] = None, highlight: Option[String] = None,
-      count: Option[Int] = None, page: Option[Int] = None)(implicit system: ActorSystem): JsValue = {
+      count: Option[Int] = None, page: Option[Int] = None)(implicit ec: ExecutionContext): JsValue = {
     resolve(client.searchMessages(query, sort, sortDir, highlight, count, page))
   }
 
@@ -317,7 +319,7 @@ class BlockingSlackApiClient(token: String, duration: FiniteDuration = 5.seconds
   /****  Stars Endpoints  ****/
   /***************************/
 
-  def listStars(userId: Option[String] = None, count: Option[Int] = None, page: Option[Int] = None)(implicit system: ActorSystem): JsValue = {
+  def listStars(userId: Option[String] = None, count: Option[Int] = None, page: Option[Int] = None)(implicit ec: ExecutionContext): JsValue = {
     resolve(client.listStars(userId, count, page))
   }
 
@@ -326,11 +328,11 @@ class BlockingSlackApiClient(token: String, duration: FiniteDuration = 5.seconds
   /****  Team Endpoints  ****/
   /**************************/
 
-  def getTeamAccessLogs(count: Option[Int], page: Option[Int])(implicit system: ActorSystem): JsValue = {
+  def getTeamAccessLogs(count: Option[Int], page: Option[Int])(implicit ec: ExecutionContext): JsValue = {
     resolve(client.getTeamAccessLogs(count, page))
   }
 
-  def getTeamInfo()(implicit system: ActorSystem): JsValue = {
+  def getTeamInfo()(implicit ec: ExecutionContext): JsValue = {
     resolve(client.getTeamInfo())
   }
 
@@ -339,23 +341,23 @@ class BlockingSlackApiClient(token: String, duration: FiniteDuration = 5.seconds
   /****  User Endpoints  ****/
   /**************************/
 
-  def getUserPresence(userId: String)(implicit system: ActorSystem): String = {
+  def getUserPresence(userId: String)(implicit ec: ExecutionContext): String = {
     resolve(client.getUserPresence(userId))
   }
 
-  def getUserInfo(userId: String)(implicit system: ActorSystem): User = {
+  def getUserInfo(userId: String)(implicit ec: ExecutionContext): User = {
     resolve(client.getUserInfo(userId))
   }
 
-  def listUsers()(implicit system: ActorSystem): Seq[User] = {
+  def listUsers()(implicit ec: ExecutionContext): Seq[User] = {
     resolve(client.listUsers())
   }
 
-  def setUserActive(userId: String)(implicit system: ActorSystem): Boolean = {
+  def setUserActive(userId: String)(implicit ec: ExecutionContext): Boolean = {
     resolve(client.setUserActive(userId))
   }
 
-  def setUserPresence(presence: String)(implicit system: ActorSystem): Boolean = {
+  def setUserPresence(presence: String)(implicit ec: ExecutionContext): Boolean = {
     resolve(client.setUserPresence(presence))
   }
 

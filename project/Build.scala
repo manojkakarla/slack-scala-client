@@ -5,7 +5,7 @@ import sbtrelease._
 
 object BuildSettings {
   val buildOrganization = "com.github.gilbertw1"
-  val buildVersion      = "0.2.2"
+  val buildVersion      = "0.2.1"
   val buildScalaVersion = "2.11.11"
 //  val buildCrossScalaVersions = Seq("2.11.11", "2.12.3")
 
@@ -52,16 +52,22 @@ object Resolvers {
 }
 
 object Dependencies {
-  val akkaActor = "com.typesafe.akka" %% "akka-actor" % "2.5.4"
-  val akkaHttp = "com.typesafe.akka" %% "akka-http-core" % "10.0.10"
+  val akkaVersion = "2.5.4"
+  val sprayVersion = "1.3.3"
+  val playVersion = "2.4.6"
+
+  val akkaActor = "com.typesafe.akka" %% "akka-actor" % akkaVersion
+  val akkaSlf4j = "com.typesafe.akka" %% "akka-slf4j" % akkaVersion
 
   val scalaAsync = "org.scala-lang.modules" %% "scala-async" % "0.9.6"
-  val playJson = "com.typesafe.play" %% "play-json" % "2.4.6"
+  val dispatch = "net.databinder.dispatch" %% "dispatch-core" % "0.11.3"
+  val playJson = "com.typesafe.play" %% "play-json" % playVersion
+  val sprayWebsocket = "com.wandoulabs.akka" %% "spray-websocket" % "0.1.4"
 
   val scalatest = "org.scalatest" %% "scalatest" % "3.0.0" % "test"
 
-  val akkaDependencies = Seq(akkaHttp)
-  val miscDependencies = Seq(playJson, scalaAsync)
+  val akkaDependencies = Seq(akkaActor, akkaSlf4j)
+  val miscDependencies = Seq(playJson, scalaAsync, dispatch, sprayWebsocket)
   val testDependencies = Seq(scalatest)
 
   val allDependencies = akkaDependencies ++ miscDependencies ++ testDependencies
@@ -77,6 +83,7 @@ object SlackScalaClient extends Build {
       .settings ( buildSettings : _* )
       .settings ( resolvers ++= Seq(typesafeRepo) )
       .settings ( libraryDependencies ++= Dependencies.allDependencies )
+      .settings ( dependencyOverrides += "io.spray" %% "spray-can" % Dependencies.sprayVersion)
       .settings ( scalacOptions ++= Seq("-unchecked", "-deprecation", "-Xlint", "-Xfatal-warnings", "-feature") )
 
 }
