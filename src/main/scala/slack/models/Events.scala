@@ -49,11 +49,13 @@ case class ThreadReply (
 )
 
 case class ReplyMessage (
-  user: String,
   ts: String,
   thread_ts: String,
   reply_count: Int,
   unread_count: Int,
+  username: Option[String],
+  user: Option[String],
+  bot_id: Option[String],
   replies: Seq[ThreadReply]
 )
 
@@ -69,8 +71,9 @@ case class BotMessage (
   ts: String,
   channel: String,
   text: String,
-  bot_id: String,
-  username: Option[String]
+  username: Option[String],
+  user: Option[String],
+  bot_id: Option[String]
 ) extends SlackEvent
 
 // TODO: Message Sub-types
@@ -165,7 +168,7 @@ case class ChannelUnarchive (
 ) extends SlackEvent
 
 case class ChannelHistoryChanged (
-  latest: Long,
+  latest: String,
   ts: String,
   event_ts: String
 ) extends SlackEvent
@@ -191,7 +194,7 @@ case class ImMarked (
 ) extends SlackEvent
 
 case class ImHistoryChanged (
-  latest: Long,
+  latest: String,
   ts: String,
   event_ts: String
 ) extends SlackEvent
@@ -249,7 +252,7 @@ case class GroupMarked (
 ) extends SlackEvent
 
 case class GroupHistoryChanged (
-  latest: Long,
+  latest: String,
   ts: String,
   event_ts: String
 ) extends SlackEvent

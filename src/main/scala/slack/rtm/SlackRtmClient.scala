@@ -1,21 +1,21 @@
 package slack.rtm
 
+import java.util.concurrent.atomic.AtomicLong
+
+import akka.actor._
+import akka.pattern.ask
+import akka.util.{ByteString, Timeout}
+import play.api.libs.json._
 import slack.api._
 import slack.models._
 import slack.rtm.SlackRtmConnectionActor._
 import slack.rtm.WebSocketClientActor._
+import spray.can.websocket.frame._
 
-import java.util.concurrent.atomic.AtomicLong
 import scala.collection.mutable.{Set => MSet}
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
-
-import akka.actor._
-import akka.util.{ByteString, Timeout}
-import akka.pattern.ask
-import play.api.libs.json._
-import spray.can.websocket.frame._
 
 object SlackRtmClient {
   def apply(token: String, duration: FiniteDuration = 5.seconds)(implicit arf: ActorRefFactory): SlackRtmClient = {
@@ -125,9 +125,9 @@ private[rtm] class SlackRtmConnectionActor(token: String, state: RtmState, durat
       val nextId = idCounter.getAndIncrement
       val payload = Json.stringify(Json.toJson(MessageTyping(nextId, channelId)))
       webSocketClient.get ! SendFrame(TextFrame(ByteString(payload)))
-    case SendMessage(channelId, text, ts_thread) =>
+    case SendMessage(channelId, text, thread_ts) =>
       val nextId = idCounter.getAndIncrement
-      val payload = Json.stringify(Json.toJson(MessageSend(nextId, channelId, text)))
+      val payload = Json.stringify(Json.toJson(MessageSend(nextId, channelId, text, thread_ts)))
       webSocketClient.get ! SendFrame(TextFrame(ByteString(payload)))
       sender ! nextId
     case bm: BotEditMessage =>
@@ -147,7 +147,11 @@ private[rtm] class SlackRtmConnectionActor(token: String, state: RtmState, durat
       val delay = Math.pow(2.0, connectFailures.toDouble).toInt
       log.info(s"[SlackRtmConnectionActor][$teamDomain] WebSocket Client failed to connect, retrying in {} seconds", delay)
       connectFailures += 1
-      context.system.scheduler.scheduleOnce(delay.seconds, self, ReconnectWebSocket)
+      webSocketClient = None
+      if (connectFailures < 5)
+        context.system.scheduler.scheduleOnce(delay.seconds, self, ReconnectWebSocket)
+      else
+        log.error(s"[SlackRtmConnectionActor][$teamDomain] WebSocket Client connect attempts exhausted, Restart manually")
     case ReconnectWebSocket =>
       connectWebSocket()
     case Terminated(actor) =>

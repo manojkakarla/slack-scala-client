@@ -44,7 +44,7 @@ private[rtm] class WebSocketClientActor(url: String, domain: String, initialList
 
   val listeners = MSet[ActorRef](initialListeners: _*)
   val uri = new URI(url)
-  log.info("[WebSocketClient] Connecting to RTM: {}", uri)
+  log.info(s"[WebSocketClient][$domain] Connecting to RTM: {}", uri)
   IO(UHttp) ! Http.Connect(uri.getHost, if(uri.getPort > 0) uri.getPort else 443, true)
 
   var pingPongTask: Option[Cancellable] = None
