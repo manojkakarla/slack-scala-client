@@ -7,7 +7,6 @@ import com.ning.http.client.multipart.FilePart
 import dispatch.{Http, Req, as, url}
 import play.api.libs.json._
 import slack.models._
-import spray.http.HttpRequest
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -228,6 +227,16 @@ class SlackApiClient(token: String) {
       "as_user" -> asUser,
       "thread_ts" -> threadTs)
     res.map(_.as[UpdateResponse])
+  }
+
+
+  /***************************/
+  /****  Emoji Endpoints  ****/
+  /***************************/
+
+  def openDialog(triggerId: String, dialog: Dialog)(implicit ec: ExecutionContext): Future[Boolean] = {
+    val res = makeApiJsonRequest("dialog.open", Json.obj("trigger_id" -> triggerId, "dialog" -> Json.toJson(dialog).toString()))
+    extract[Boolean](res, "ok")
   }
 
 
@@ -655,6 +664,14 @@ class SlackApiClient(token: String) {
   private def makeApiMethodRequest(apiMethod: String, queryParams: (String,Any)*)(implicit ec: ExecutionContext): Future[JsValue] = {
     val req = apiBaseWithToken / apiMethod
     makeApiRequest(addQueryParams(req, cleanParams(queryParams)))
+  }
+
+  private def makeApiJsonRequest(apiMethod: String, json: JsValue)(implicit ec: ExecutionContext): Future[JsValue] = {
+    val req = (apiBase / apiMethod).setMethod("POST")
+      .addHeader("Content-Type", "application/json")
+      .addHeader("Authorization", s"Bearer $token")
+      .setBody(json.toString())
+    makeApiRequest(req)
   }
 }
 
