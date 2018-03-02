@@ -244,7 +244,7 @@ class TestJsonMessages extends FunSuite {
         |"user_profile":{"avatar_hash":null,"image_72":"https://secure.gravatar.com/avatar/d41d8cd98f00b204e9800998ecf8427e.jpg?s=72&d=https%3A%2F%2Fa.slack-edge.com%2F66f9%2Fimg%2Favatars%2Fava_0000-72.png",
         |"first_name":null,"real_name":"","name":null},"channel":"D1632C4LU","ts":"1464985393.000154"}""".stripMargin)
     val ev = json.as[BotMessage]
-    assert(ev.bot_id.equals("B1E2Y493N"))
+    assert(ev.bot_id.contains("B1E2Y493N"))
   }
 
   test("parse file share message") {
@@ -287,5 +287,84 @@ class TestJsonMessages extends FunSuite {
         |"event_ts":"1360782804.083113"}""".stripMargin)
     val ev = json.as[SlackEvent]
     assert(ev.equals(ReactionRemoved("thumbsup", ReactionItemFileComment("F0HS27V1Z", "FC0HS2KBEZ"), "1360782804.083113", "U024BE7LH")))
+  }
+
+  test("Add file comment") {
+    val json = Json.parse(
+      """{
+        |   "type":"message",
+        |   "subtype":"file_comment",
+        |   "text":"<@U6CJ9GD4J> commented on <@U1R53P9DJ>’s file <https://rubrikinc.slack.com/files/U1R53P9DJ/F90SZUUHM/alitalia___confirmation.pdf|Alitalia   Confirmation>: Can’t download, can you please resend?",
+        |   "file":{
+        |      "id":"F90SZUUHM",
+        |      "created":1517142730,
+        |      "timestamp":1517142730,
+        |      "name":"Alitalia _ Confirmation.pdf",
+        |      "title":"Alitalia   Confirmation",
+        |      "mimetype":"application/pdf",
+        |      "filetype":"pdf",
+        |      "pretty_type":"PDF",
+        |      "user":"U1R53P9DJ",
+        |      "editable":false,
+        |      "size":254675,
+        |      "mode":"hosted",
+        |      "is_external":false,
+        |      "external_type":"",
+        |      "is_public":false,
+        |      "public_url_shared":false,
+        |      "display_as_bot":false,
+        |      "username":"",
+        |      "url_private":"https://files.slack.com/files-pri/T038H14JA-F90SZUUHM/alitalia___confirmation.pdf",
+        |      "url_private_download":"https://files.slack.com/files-pri/T038H14JA-F90SZUUHM/download/alitalia___confirmation.pdf",
+        |      "permalink":"https://rubrikinc.slack.com/files/U1R53P9DJ/F90SZUUHM/alitalia___confirmation.pdf",
+        |      "permalink_public":"https://slack-files.com/T038H14JA-F90SZUUHM-ff159362eb",
+        |      "channels":[
+        |
+        |      ],
+        |      "groups":[
+        |
+        |      ],
+        |      "ims":[
+        |         "D6DF39S94"
+        |      ],
+        |      "comments_count":2,
+        |      "initial_comment":{
+        |         "id":"Fc8ZQU74E8",
+        |         "created":1517142730,
+        |         "timestamp":1517142730,
+        |         "user":"U1R53P9DJ",
+        |         "is_intro":true,
+        |         "comment":"Hi Vincenzo,\n\nI've checked you in for your upcoming flight, here is your boarding pass. \n\nHave a great trip!"
+        |      }
+        |   },
+        |   "comment":{
+        |      "id":"Fc9028F0A0",
+        |      "created":1517216465,
+        |      "timestamp":1517216465,
+        |      "user":"U6CJ9GD4J",
+        |      "is_intro":false,
+        |      "comment":"Can’t download, can you please resend?"
+        |   },
+        |   "is_intro":false,
+        |   "team":"T038H14JA",
+        |   "source_team":"T038H14JA",
+        |   "user_team":"T038H14JA",
+        |   "user_profile":{
+        |      "avatar_hash":"92defbbda86a",
+        |      "image_72":"https://avatars.slack-edge.com/2017-08-17/228044455460_92defbbda86a1cd4d72a_72.png",
+        |      "first_name":"Vincenzo",
+        |      "real_name":"Vincenzo Lorusso",
+        |      "display_name":"lorusv",
+        |      "team":"T038H14JA",
+        |      "name":"lorusv",
+        |      "is_restricted":false,
+        |      "is_ultra_restricted":false
+        |   },
+        |   "channel":"D6DF39S94",
+        |   "event_ts":"1517216464.000496",
+        |   "ts":"1517216464.000496"
+        |}""".stripMargin)
+    val ev = json.as[SlackEvent]
+    assert(ev.isInstanceOf[FileComment])
   }
 }

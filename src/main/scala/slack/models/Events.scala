@@ -113,6 +113,14 @@ object MessageSubtypes {
   }
 }
 
+case class FileComment (
+  text: String,
+  file: SlackFile,
+  comment: SlackComment,
+  event_ts: String,
+  ts: String
+) extends SlackEvent
+
 case class ReactionAdded (
   reaction: String,
   item: ReactionItem,
