@@ -97,6 +97,7 @@ package object models {
   implicit val filePrivateFmt = Json.format[FilePrivate]
   implicit val fileChangeFmt = Json.format[FileChange]
   implicit val fileDeletedFmt = Json.format[FileDeleted]
+  implicit val fileCommentFmt = Json.format[FileComment]
   implicit val fileCommentAddedFmt = Json.format[FileCommentAdded]
   implicit val fileCommentEditedFmt = Json.format[FileCommentEdited]
   implicit val fileCommentDeletedFmt = Json.format[FileCommentDeleted]
@@ -198,6 +199,7 @@ package object models {
         case e: FilePrivate => Json.toJson(e)
         case e: FileChange => Json.toJson(e)
         case e: FileDeleted => Json.toJson(e)
+        case e: FileComment => Json.toJson(e)
         case e: FileCommentAdded => Json.toJson(e)
         case e: FileCommentEdited => Json.toJson(e)
         case e: FileCommentDeleted => Json.toJson(e)
@@ -268,6 +270,7 @@ package object models {
           case "message" if subtype.contains("message_deleted") => JsSuccess(jsValue.as[MessageDeleted])
           case "message" if subtype.contains("message_replied") => JsSuccess(jsValue.as[MessageReplied])
           case "message" if subtype.contains("bot_message") => JsSuccess(jsValue.as[BotMessage])
+          case "message" if subtype.contains("file_comment") => JsSuccess(jsValue.as[FileComment])
           case "message" if subtype.isDefined => JsSuccess(jsValue.as[MessageWithSubtype])
           case "message" => JsSuccess(jsValue.as[Message])
           case "user_typing" => JsSuccess(jsValue.as[UserTyping])
