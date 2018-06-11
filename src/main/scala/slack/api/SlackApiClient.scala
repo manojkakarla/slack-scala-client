@@ -15,6 +15,7 @@ object SlackApiClient {
   private[api] implicit val rtmStartStateFmt = Json.format[RtmStartState]
   private[api] implicit val accessTokenFmt = Json.format[AccessToken]
   private[api] implicit val historyChunkFmt = Json.format[HistoryChunk]
+  private[api] implicit val repliesChunkFmt = Json.format[RepliesChunk]
   private[api] implicit val pagingObjectFmt = Json.format[PagingObject]
   private[api] implicit val filesResponseFmt = Json.format[FilesResponse]
   private[api] implicit val fileInfoFmt = Json.format[FileInfo]
@@ -165,6 +166,11 @@ class SlackApiClient(token: String) {
     extract[Boolean](res, "ok")
   }
 
+  def getChannelReplies(channelId: String, thread_ts: String)(implicit ec: ExecutionContext): Future[RepliesChunk] = {
+    val res = makeApiMethodRequest ("channels.replies", "channel" -> channelId, "thread_ts" -> thread_ts)
+    res.map(_.as[RepliesChunk])
+  }
+
   def setChannelPurpose(channelId: String, purpose: String)(implicit ec: ExecutionContext): Future[String] = {
     val res = makeApiMethodRequest("channels.setPurpose", "channel" -> channelId, "purpose" -> purpose)
     extract[String](res, "purpose")
@@ -189,6 +195,21 @@ class SlackApiClient(token: String) {
     val params = Seq("channel" -> channelId, "ts" -> ts)
     val res = makeApiMethodRequest("chat.delete", asUser.map(b => params :+ ("as_user" -> b)).getOrElse(params): _*)
     extract[Boolean](res, "ok")
+  }
+
+  def postEphemeral(channelId: String, userId: String, text: String, asUser: Option[Boolean] = None,
+                    attachments: Option[Seq[Attachment]] = None, linkNames: Option[String] = None,
+                    parse: Option[String] = None)(implicit ec: ExecutionContext): Future[String] = {
+    val res = makeApiMethodRequest (
+      "chat.postEphemeral",
+      "channel" -> channelId,
+      "text" -> text,
+      "user" -> userId,
+      "as_user" -> asUser,
+      "parse" -> parse,
+      "link_names" -> linkNames,
+      "attachments" -> attachments.map(a => Json.stringify(Json.toJson(a))))
+    extract[String](res, "message_ts")
   }
 
   def postChatMessage(channelId: String, text: String, username: Option[String] = None, asUser: Option[Boolean] = None,
@@ -229,10 +250,33 @@ class SlackApiClient(token: String) {
     res.map(_.as[UpdateResponse])
   }
 
+  /**********************************/
+  /****  Conversation Endpoints  ****/
+  /**********************************/
 
-  /***************************/
-  /****  Emoji Endpoints  ****/
-  /***************************/
+  def archiveConversation(channelId: String)(implicit ec: ExecutionContext): Future[Boolean] = {
+    val res = makeApiMethodRequest("conversations.archive", "channel" -> channelId)
+    extract[Boolean](res, "ok")
+  }
+
+  def closeConversation(channelId: String)(implicit ec: ExecutionContext): Future[Boolean] = {
+    val res = makeApiMethodRequest("conversations.close", "channel" -> channelId)
+    extract[Boolean](res, "ok")
+  }
+
+  def inviteToConversation(channelId: String, members: Seq[String])(implicit ec: ExecutionContext): Future[Boolean] = {
+    val res = makeApiMethodRequest("conversations.invite", "channel" -> channelId, "users" -> members.mkString(","))
+    extract[Boolean](res, "ok")
+  }
+
+  def unarchiveConversation(channelId: String)(implicit ec: ExecutionContext): Future[Boolean] = {
+    val res = makeApiMethodRequest("conversations.unarchive", "channel" -> channelId)
+    extract[Boolean](res, "ok")
+  }
+
+  /****************************/
+  /****  Dialog Endpoints  ****/
+  /****************************/
 
   def openDialog(triggerId: String, dialog: Dialog)(implicit ec: ExecutionContext): Future[Boolean] = {
     val res = makeApiJsonRequest("dialog.open", Json.obj("trigger_id" -> triggerId, "dialog" -> Json.toJson(dialog).toString()))
@@ -682,6 +726,12 @@ case class HistoryChunk (
   latest: Option[String],
   messages: Seq[JsValue],
   has_more: Boolean
+)
+
+case class RepliesChunk (
+  has_more: Boolean,
+  messages: Seq[JsValue],
+  ok: Boolean
 )
 
 case class FileInfo (

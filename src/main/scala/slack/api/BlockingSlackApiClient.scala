@@ -2,6 +2,7 @@ package slack.api
 
 import java.io.File
 
+import akka.actor.ActorSystem
 import play.api.libs.json._
 import slack.models._
 
@@ -89,6 +90,10 @@ class BlockingSlackApiClient(token: String, duration: FiniteDuration = 5.seconds
     resolve(client.renameChannel(channelId, name))
   }
 
+  def getChannelReplies(channelId: String, thread_ts: String)(implicit ec: ExecutionContext): RepliesChunk = {
+    resolve(client.getChannelReplies(channelId, thread_ts))
+  }
+
   def setChannelPurpose(channelId: String, purpose: String)(implicit ec: ExecutionContext): String = {
     resolve(client.setChannelPurpose(channelId, purpose))
   }
@@ -113,8 +118,9 @@ class BlockingSlackApiClient(token: String, duration: FiniteDuration = 5.seconds
   def postChatMessage(channelId: String, text: String, username: Option[String] = None, asUser: Option[Boolean] = None,
       parse: Option[String] = None, linkNames: Option[String] = None, attachments: Option[Seq[Attachment]] = None,
       unfurlLinks: Option[Boolean] = None, unfurlMedia: Option[Boolean] = None, iconUrl: Option[String] = None,
-      iconEmoji: Option[String] = None)(implicit ec: ExecutionContext): String = {
-    resolve(client.postChatMessage(channelId, text, username, asUser, parse, linkNames, attachments, unfurlLinks, unfurlMedia, iconUrl, iconEmoji))
+      iconEmoji: Option[String] = None, replaceOriginal: Option[Boolean]= None, deleteOriginal: Option[Boolean] = None,
+      threadTs: Option[String] = None)(implicit ec: ExecutionContext): String = {
+    resolve(client.postChatMessage(channelId, text, username, asUser, parse, linkNames, attachments, unfurlLinks, unfurlMedia, iconUrl, iconEmoji, replaceOriginal, deleteOriginal, threadTs))
   }
 
   def updateChatMessage(channelId: String, ts: String, text: String)(implicit ec: ExecutionContext): UpdateResponse = {
