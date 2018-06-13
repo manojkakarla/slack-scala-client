@@ -438,15 +438,17 @@ case class DndUpdatedUser(
  event_ts: String
 ) extends SlackEvent
 
-case class DndStatus(dnd_enabled: Boolean,
+case class DndStatus(
+ dnd_enabled: Boolean,
  next_dnd_start_ts: Long,
  next_dnd_end_ts: Long
 )
 
-case class MemberJoined(user: String,
-                        channel: String,
-                        inviter: String
-                       ) extends SlackEvent
+case class MemberJoined(
+ user: String,
+ channel: String,
+ inviter: Option[String]
+) extends SlackEvent
 
 case class UpdateThreadState(
   event_ts: String
