@@ -258,7 +258,7 @@ class TestJsonMessages extends FunSuite {
         |         "type": "message", "channel": "G172PTNSH"}""".stripMargin)
     val ev = json.as[SlackEvent]
     assert(ev.asInstanceOf[MessageWithSubtype].messageSubType.equals(FileShareMessage(SlackFile("F1FVBN542",
-      1465567656, 1465569974, Some("test-file"), "test-title", "image/png", "image/png",
+      1465567656, Some(1465569974), Some("test-file"), "test-title", "image/png", "image/png",
       "test", "U1234", "test-mode", editable = false, is_external = false, "etype", 2000, None, None, None, None, None))))
   }
 
@@ -268,7 +268,7 @@ class TestJsonMessages extends FunSuite {
         |"item":{"type":"message","channel":"C0G9QF9GZ","ts":"1360782400.498405"},
         |"event_ts":"1360782804.083113"}""".stripMargin)
     val ev = json.as[SlackEvent]
-    assert(ev.equals(ReactionAdded("thumbsup", ReactionItemMessage("C0G9QF9GZ", "1360782400.498405"), "1360782804.083113", "U024BE7LH")))
+    assert(ev.equals(ReactionAdded("thumbsup", ReactionItemMessage("C0G9QF9GZ", "1360782400.498405"), "1360782804.083113", "U024BE7LH", None)))
   }
 
   test("parse reaction added to file") {
@@ -277,7 +277,7 @@ class TestJsonMessages extends FunSuite {
         |"item":{"type":"file","file":"F0HS27V1Z"},
         |"event_ts":"1360782804.083113"}""".stripMargin)
     val ev = json.as[SlackEvent]
-    assert(ev.equals(ReactionAdded("thumbsup", ReactionItemFile("F0HS27V1Z"), "1360782804.083113", "U024BE7LH")))
+    assert(ev.equals(ReactionAdded("thumbsup", ReactionItemFile("F0HS27V1Z"), "1360782804.083113", "U024BE7LH", None)))
   }
 
   test("parse reaction removed from file comment") {
@@ -286,7 +286,7 @@ class TestJsonMessages extends FunSuite {
         |"item":{"type":"file_comment","file":"F0HS27V1Z","file_comment": "FC0HS2KBEZ"},
         |"event_ts":"1360782804.083113"}""".stripMargin)
     val ev = json.as[SlackEvent]
-    assert(ev.equals(ReactionRemoved("thumbsup", ReactionItemFileComment("F0HS27V1Z", "FC0HS2KBEZ"), "1360782804.083113", "U024BE7LH")))
+    assert(ev.equals(ReactionRemoved("thumbsup", ReactionItemFileComment("F0HS27V1Z", "FC0HS2KBEZ"), "1360782804.083113", "U024BE7LH", None)))
   }
 
   test("Add file comment") {

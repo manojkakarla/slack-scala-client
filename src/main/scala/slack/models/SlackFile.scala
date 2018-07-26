@@ -4,7 +4,7 @@ package slack.models
 case class SlackFile (
   id: String,
   created: Long,
-  timestamp: Long,
+  timestamp: Option[Long],
   name: Option[String],
   title: String,
   mimetype: String,
