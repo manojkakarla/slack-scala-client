@@ -4,10 +4,10 @@ import com.typesafe.sbt.SbtPgp.autoImport._
 import sbtrelease._
 
 object BuildSettings {
-  val buildOrganization = "com.github.gilbertw1"
-  val buildVersion      = "0.2.2"
+  val buildOrganization = "com.github.slack-scala-client"
+  val buildVersion      = "0.2.4"
   val buildScalaVersion = "2.11.11"
-//  val buildCrossScalaVersions = Seq("2.11.11", "2.12.3")
+//  val buildCrossScalaVersions = Seq("2.11.12", "2.12.7")
 
   val buildSettings = Seq (
     organization       := buildOrganization,
@@ -25,7 +25,7 @@ object BuildSettings {
     publishArtifact in Test := false,
     pomIncludeRepository := { _ => false },
     pomExtra := (
-      <url>https://github.com/gilbertw1/slack-scala-client</url>
+      <url>https://github.com/slack-scala-client/slack-scala-client</url>
       <licenses>
         <license>
           <name>MIT</name>
@@ -34,8 +34,8 @@ object BuildSettings {
         </license>
       </licenses>
       <scm>
-        <url>git@github.com:gilbertw1/slack-scala-client.git</url>
-        <connection>scm:git:git@github.com:gilbertw1/slack-scala-client.git</connection>
+        <url>git@github.com:slack-scala-client/slack-scala-client.git</url>
+        <connection>scm:git:git@github.com:slack-scala-client/slack-scala-client.git</connection>
       </scm>
       <developers>
         <developer>
@@ -52,19 +52,19 @@ object Resolvers {
 }
 
 object Dependencies {
-  val akkaVersion = "2.4.8"
+  val akkaVersion = "2.5.18"
   val sprayVersion = "1.3.3"
   val playVersion = "2.4.6"
 
   val akkaActor = "com.typesafe.akka" %% "akka-actor" % akkaVersion
   val akkaSlf4j = "com.typesafe.akka" %% "akka-slf4j" % akkaVersion
 
-  val scalaAsync = "org.scala-lang.modules" %% "scala-async" % "0.9.6"
-  val dispatch = "net.databinder.dispatch" %% "dispatch-core" % "0.11.3"
+  val scalaAsync = "org.scala-lang.modules" %% "scala-async" % "0.9.7"
+  val dispatch = "net.databinder.dispatch" %% "dispatch-core" % "0.13.4"
   val playJson = "com.typesafe.play" %% "play-json" % playVersion
   val sprayWebsocket = "com.wandoulabs.akka" %% "spray-websocket" % "0.1.4"
 
-  val scalatest = "org.scalatest" %% "scalatest" % "3.0.0" % "test"
+  val scalatest = "org.scalatest" %% "scalatest" % "3.0.5" % "test"
 
   val akkaDependencies = Seq(akkaActor, akkaSlf4j)
   val miscDependencies = Seq(playJson, scalaAsync, dispatch, sprayWebsocket)

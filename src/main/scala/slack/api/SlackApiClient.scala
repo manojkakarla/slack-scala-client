@@ -3,8 +3,8 @@ package slack.api
 import java.io.File
 import java.nio.charset.StandardCharsets
 
-import com.ning.http.client.multipart.FilePart
 import dispatch.{Http, Req, as, url}
+import org.asynchttpclient.request.body.multipart.FilePart
 import play.api.libs.json._
 import slack.models._
 
@@ -42,7 +42,7 @@ object SlackApiClient {
 
 
   private def makeApiRequest(request: Req)(implicit ec: ExecutionContext): Future[JsValue] = {
-    Http(request OK as.String).map { response =>
+    Http.default(request OK as.String).map { response =>
       val parsed = Json.parse(response)
       val ok = (parsed \ "ok").as[Boolean]
       if(ok) {
@@ -213,26 +213,28 @@ class SlackApiClient(token: String) {
   }
 
   def postChatMessage(channelId: String, text: String, username: Option[String] = None, asUser: Option[Boolean] = None,
-      parse: Option[String] = None, linkNames: Option[String] = None, attachments: Option[Seq[Attachment]] = None,
-      unfurlLinks: Option[Boolean] = None, unfurlMedia: Option[Boolean] = None, iconUrl: Option[String] = None,
-      iconEmoji: Option[String] = None, replaceOriginal: Option[Boolean]= None, deleteOriginal: Option[Boolean] = None,
-      threadTs: Option[String] = None)(implicit ec: ExecutionContext): Future[String] = {
-    val res = makeApiMethodRequest (
-      "chat.postMessage",
+                      parse: Option[String] = None, linkNames: Option[String] = None, attachments: Option[Seq[Attachment]] = None,
+                      unfurlLinks: Option[Boolean] = None, unfurlMedia: Option[Boolean] = None, iconUrl: Option[String] = None,
+                      iconEmoji: Option[String] = None, replaceOriginal: Option[Boolean]= None, deleteOriginal: Option[Boolean] = None,
+                      threadTs: Option[String] = None)(implicit ec: ExecutionContext): Future[String] = {
+    val json = Json.obj(
       "channel" -> channelId,
-      "text" -> text,
-      "username" -> username,
-      "as_user" -> asUser,
-      "thread_ts" -> threadTs,
-      "parse" -> parse,
-      "link_names" -> linkNames,
-      "attachments" -> attachments.map(a => Json.stringify(Json.toJson(a))),
-      "unfurl_links" -> unfurlLinks,
-      "unfurl_media" -> unfurlMedia,
-      "icon_url" -> iconUrl,
-      "icon_emoji" -> iconEmoji,
-      "replace_original" -> replaceOriginal,
-      "delete_original" -> deleteOriginal)
+      "text" -> text) ++
+    JsObject(Seq(
+      username.map("username" -> Json.toJson(_)),
+      asUser.map("as_user" -> Json.toJson(_)),
+      threadTs.map("thread_ts" -> Json.toJson(_)),
+      parse.map("parse" -> Json.toJson(_)),
+      linkNames.map("link_names" -> Json.toJson(_)),
+      attachments.map("attachments" -> Json.toJson(_)),
+      unfurlLinks.map("unfurl_links" -> Json.toJson(_)),
+      unfurlMedia.map("unfurl_media" -> Json.toJson(_)),
+      iconUrl.map("icon_url" -> Json.toJson(_)),
+      iconEmoji.map("icon_emoji" -> Json.toJson(_)),
+      replaceOriginal.map("replace_original" -> Json.toJson(_)),
+      deleteOriginal.map("delete_original" -> Json.toJson(_))
+    ).flatten)
+    val res = makeApiJsonRequest("chat.postMessage", json)
     extract[String](res, "ts")
   }
 
@@ -336,7 +338,7 @@ class SlackApiClient(token: String) {
       case Right(str) =>
         makeApiRequest(addQueryParams(req, cleanParams(params ++ Seq("content" -> str))))
       case Left(file) =>
-        val multi = req.setContentType("multipart/form-data", StandardCharsets.UTF_8.toString).setHeader("Transfer-Encoding", "chunked").POST
+        val multi = req.setContentType("multipart/form-data", StandardCharsets.UTF_8).setHeader("Transfer-Encoding", "chunked").POST
         val withFile = multi.addBodyPart(new FilePart("file", file))
         makeApiRequest(addQueryParams(withFile, cleanParams(params)))
     }
@@ -712,7 +714,7 @@ class SlackApiClient(token: String) {
 
   private def makeApiJsonRequest(apiMethod: String, json: JsValue)(implicit ec: ExecutionContext): Future[JsValue] = {
     val req = (apiBase / apiMethod).setMethod("POST")
-      .addHeader("Content-Type", "application/json")
+      .addHeader("Content-Type", "application/json; charset=utf-8")
       .addHeader("Authorization", s"Bearer $token")
       .setBody(json.toString())
     makeApiRequest(req)
