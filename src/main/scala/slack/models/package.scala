@@ -1,11 +1,9 @@
 package slack
 
-import play.api.data.validation.ValidationError
 import play.api.libs.json._
 
 package object models {
   implicit val confirmFieldFmt = Json.format[ConfirmField]
-  implicit val optionFieldFmt = Json.format[OptionField]
   implicit val actionFieldFmt = Json.format[ActionField]
   implicit val attachmentFieldFmt = Json.format[AttachmentField]
   implicit val attachmentFmt = Json.format[Attachment]
@@ -35,31 +33,54 @@ package object models {
           case "message" => JsSuccess(json.as[ReactionItemMessage])
           case "file" => JsSuccess(json.as[ReactionItemFile])
           case "file_comment" => JsSuccess(json.as[ReactionItemFileComment])
-          case t: String => JsError(ValidationError("Invalid type property: {}", t))
+          case t: String => JsError(JsonValidationError("Invalid type property: {}", t))
         }
       } else {
-        JsError(ValidationError("Required (string) event type property is missing."))
+        JsError(JsonValidationError("Required (string) event type property is missing."))
       }
     }
   }
   implicit val reactionItemWrites = new Writes[ReactionItem] {
     override def writes(item: ReactionItem): JsValue = item match {
-      case i:ReactionItemMessage => Json.toJson(i)
-      case i:ReactionItemFile => Json.toJson(i)
-      case i:ReactionItemFileComment => Json.toJson(i)
+      case i: ReactionItemMessage => Json.toJson(i)
+      case i: ReactionItemFile => Json.toJson(i)
+      case i: ReactionItemFileComment => Json.toJson(i)
     }
   }
+  implicit val optionElementFmt = Json.format[OptionElement]
+  implicit val selectElementFmt = Json.format[SelectElement]
+  implicit val textElementFmt = Json.format[TextElement]
+  implicit val dialogElementReads = new Reads[DialogElement] {
+    def reads(json: JsValue): JsResult[DialogElement] = {
+      val rType = (json \ "type").asOpt[String]
+      if (rType.isDefined) {
+        rType.get match {
+          case "select" => JsSuccess(json.as[SelectElement])
+          case _ => JsSuccess(json.as[TextElement])
+        }
+      } else {
+        JsError(JsonValidationError("Required property: [type] is missing."))
+      }
+    }
+  }
+  implicit val dialogElementWrites = new Writes[DialogElement] {
+    override def writes(element: DialogElement): JsValue = element match {
+      case e: TextElement => Json.toJson(e)
+      case e: SelectElement => Json.toJson(e)
+    }
+  }
+  implicit val dialogFmt = Json.format[Dialog]
 
   // Event Formats
   implicit val helloFmt = Json.format[Hello]
   implicit val messageFmt = Json.format[Message]
   implicit val messageReply = Json.format[Reply]
+  implicit val replyMarkerFmt = Json.format[ReplyMarker]
   implicit val editMessageFmt = Json.format[EditMessage]
+  implicit val replyMessageFmt = Json.format[ReplyMessage]
   implicit val botMessageFmt = Json.format[BotMessage]
   implicit val messageChangedFmt = Json.format[MessageChanged]
   implicit val messageDeletedFmt = Json.format[MessageDeleted]
-  implicit val threadReplyFmt = Json.format[ThreadReply]
-  implicit val replyMessageFmt = Json.format[ReplyMessage]
   implicit val messageRepliedFmt = Json.format[MessageReplied]
   implicit val reactionAddedFmt = Json.format[ReactionAdded]
   implicit val reactionRemovedFmt = Json.format[ReactionRemoved]
@@ -97,7 +118,6 @@ package object models {
   implicit val filePrivateFmt = Json.format[FilePrivate]
   implicit val fileChangeFmt = Json.format[FileChange]
   implicit val fileDeletedFmt = Json.format[FileDeleted]
-  implicit val fileCommentFmt = Json.format[FileComment]
   implicit val fileCommentAddedFmt = Json.format[FileCommentAdded]
   implicit val fileCommentEditedFmt = Json.format[FileCommentEdited]
   implicit val fileCommentDeletedFmt = Json.format[FileCommentDeleted]
@@ -125,8 +145,11 @@ package object models {
   implicit val appsUninstalledFmt = Json.format[AppsUninstalled]
   implicit val appsInstalledFmt = Json.format[AppsInstalled]
   implicit val desktopNotificationFmt = Json.format[DesktopNotification]
-  implicit val UpdateThreadStateFmt = Json.format[UpdateThreadState]
-  implicit val OtherEventFmt = Json.format[OtherEvent]
+  implicit val dndStatusFmt = Json.format[DndStatus]
+  implicit val dndUpdateUserFmt = Json.format[DndUpdatedUser]
+  implicit val memberJoined = Json.format[MemberJoined]
+  implicit val memberLeft = Json.format[MemberLeft]
+  implicit val pong = Json.format[Pong]
 
   // Message sub-types
   import MessageSubtypes._
@@ -144,7 +167,9 @@ package object models {
         (JsPath \ "text").write[String] and
         (JsPath \ "is_starred").write[Option[Boolean]] and
         (JsPath \ "subtype").write[String]
-      ) ((msg: MessageWithSubtype) => (msg.ts, msg.channel, msg.user, msg.text, msg.is_starred, msg.messageSubType.subtype))
+    )(
+      (msg: MessageWithSubtype) => (msg.ts, msg.channel, msg.user, msg.text, msg.is_starred, msg.messageSubType.subtype)
+    )
   }
 
   // Event Reads/Writes
@@ -199,7 +224,6 @@ package object models {
         case e: FilePrivate => Json.toJson(e)
         case e: FileChange => Json.toJson(e)
         case e: FileDeleted => Json.toJson(e)
-        case e: FileComment => Json.toJson(e)
         case e: FileCommentAdded => Json.toJson(e)
         case e: FileCommentEdited => Json.toJson(e)
         case e: FileCommentDeleted => Json.toJson(e)
@@ -227,8 +251,10 @@ package object models {
         case e: AppsUninstalled => Json.toJson(e)
         case e: AppsInstalled => Json.toJson(e)
         case e: DesktopNotification => Json.toJson(e)
-        case e: UpdateThreadState => Json.toJson(e)
-        case e: OtherEvent => Json.toJson(e)
+        case e: DndUpdatedUser => Json.toJson(e)
+        case e: MemberJoined => Json.toJson(e)
+        case e: MemberLeft => Json.toJson(e)
+        case e: Pong => Json.toJson(e)
       }
     }
   }
@@ -270,7 +296,6 @@ package object models {
           case "message" if subtype.contains("message_deleted") => JsSuccess(jsValue.as[MessageDeleted])
           case "message" if subtype.contains("message_replied") => JsSuccess(jsValue.as[MessageReplied])
           case "message" if subtype.contains("bot_message") => JsSuccess(jsValue.as[BotMessage])
-          case "message" if subtype.contains("file_comment") => JsSuccess(jsValue.as[FileComment])
           case "message" if subtype.isDefined => JsSuccess(jsValue.as[MessageWithSubtype])
           case "message" => JsSuccess(jsValue.as[Message])
           case "user_typing" => JsSuccess(jsValue.as[UserTyping])
@@ -336,14 +361,19 @@ package object models {
           case "apps_uninstalled" => JsSuccess(jsValue.as[AppsUninstalled])
           case "apps_installed" => JsSuccess(jsValue.as[AppsInstalled])
           case "desktop_notification" => JsSuccess(jsValue.as[DesktopNotification])
-          case "update_thread_state" => JsSuccess(jsValue.as[UpdateThreadState])
-          case t: String => JsSuccess(OtherEvent(t, jsValue))
+          case "dnd_updated_user" => JsSuccess(jsValue.as[DndUpdatedUser])
+          case "member_joined_channel" => JsSuccess(jsValue.as[MemberJoined])
+          case "member_left_channel" => JsSuccess(jsValue.as[MemberLeft])
+          case "pong" => JsSuccess(jsValue.as[Pong])
+          case t: String => JsError(JsonValidationError("Invalid type property: {}", t))
         }
       } else if ((jsValue \ "reply_to").asOpt[Long].isDefined) {
         JsSuccess(jsValue.as[Reply])
       } else {
-        JsError(ValidationError("Required (string) event type property is missing."))
+        JsError(JsonValidationError("Required (string) event type property is missing."))
       }
     }
   }
+  implicit val slackEventStructureFmt = Json.format[SlackEventStructure]
+  implicit val eventServerChallengeFmt = Json.format[EventServerChallenge]
 }

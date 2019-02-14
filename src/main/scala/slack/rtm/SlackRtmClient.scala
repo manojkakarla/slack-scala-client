@@ -4,31 +4,35 @@ import slack.api._
 import slack.models._
 import slack.rtm.SlackRtmConnectionActor._
 import slack.rtm.WebSocketClientActor._
-
 import java.util.concurrent.atomic.AtomicLong
+
 import scala.collection.mutable.{Set => MSet}
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
-
 import akka.actor._
+import akka.http.scaladsl.model.Uri
 import akka.util.Timeout
 import akka.pattern.ask
 import play.api.libs.json._
 import akka.http.scaladsl.model.ws.TextMessage
 
 object SlackRtmClient {
-  def apply(token: String, duration: FiniteDuration = 5.seconds)(implicit arf: ActorSystem): SlackRtmClient = {
-    new SlackRtmClient(token, duration)
+  def apply(token: String,
+            slackApiBaseUri: Uri = SlackApiClient.defaultSlackApiBaseUri,
+            duration: FiniteDuration = 5.seconds)(implicit arf: ActorSystem): SlackRtmClient = {
+    new SlackRtmClient(token, slackApiBaseUri, duration)
   }
 }
 
-class SlackRtmClient(token: String, duration: FiniteDuration = 5.seconds)(implicit arf: ActorSystem) {
+class SlackRtmClient private (token: String, slackApiBaseUri: Uri, duration: FiniteDuration)(
+  implicit arf: ActorSystem
+) {
   private implicit val timeout = new Timeout(duration)
 
-  private val apiClient = BlockingSlackApiClient(token, duration)
+  val apiClient = BlockingSlackApiClient(token, slackApiBaseUri, duration)
   val state = RtmState(apiClient.startRealTimeMessageSession())
-  private val actor = SlackRtmConnectionActor(token, state, duration)
+  private val actor = SlackRtmConnectionActor(apiClient, state)
 
   def onEvent(f: (SlackEvent) => Unit): ActorRef = {
     val handler = EventHandlerActor(f)
@@ -76,29 +80,35 @@ private[rtm] object SlackRtmConnectionActor {
   implicit val sendMessageFmt = Json.format[MessageSend]
   implicit val botEditMessageFmt = Json.format[BotEditMessage]
   implicit val typingMessageFmt = Json.format[MessageTyping]
+  implicit val pingMessageFmt = Json.format[Ping]
 
   case class AddEventListener(listener: ActorRef)
   case class RemoveEventListener(listener: ActorRef)
   case class SendMessage(channelId: String, text: String, ts_thread: Option[String] = None)
-  case class BotEditMessage(channelId: String, ts: String, text: String, as_user: Boolean = true, `type`:String = "chat.update")
+  case class BotEditMessage(channelId: String,
+                            ts: String,
+                            text: String,
+                            as_user: Boolean = true,
+                            `type`: String = "chat.update")
   case class TypingMessage(channelId: String)
   case class StateRequest()
   case class StateResponse(state: RtmState)
   case object ReconnectWebSocket
+  case class SendPing()
 
-  def apply(token: String, state: RtmState, duration: FiniteDuration)(implicit arf: ActorRefFactory): ActorRef = {
-    arf.actorOf(Props(new SlackRtmConnectionActor(token, state, duration)))
+  def apply(apiClient: BlockingSlackApiClient, state: RtmState)(implicit arf: ActorRefFactory): ActorRef = {
+    arf.actorOf(Props(new SlackRtmConnectionActor(apiClient, state)))
   }
 }
 
-private[rtm] class SlackRtmConnectionActor(token: String, state: RtmState, duration: FiniteDuration) extends Actor with ActorLogging {
+private[rtm] class SlackRtmConnectionActor(apiClient: BlockingSlackApiClient, state: RtmState)
+    extends Actor
+    with ActorLogging {
 
   implicit val ec = context.dispatcher
   implicit val system = context.system
-  val apiClient = BlockingSlackApiClient(token, duration)
   val listeners = MSet[ActorRef]()
   val idCounter = new AtomicLong(1L)
-  val teamDomain = Try(state.team.domain).toOption.getOrElse("Team")
 
   override val supervisorStrategy =
     OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1.minute) {
@@ -107,6 +117,8 @@ private[rtm] class SlackRtmConnectionActor(token: String, state: RtmState, durat
 
   var connectFailures = 0
   var webSocketClient: Option[ActorRef] = None
+
+  context.system.scheduler.schedule(1.minute, 1.minute, self, SendPing)
 
   def receive = {
     case message: TextMessage =>
@@ -118,13 +130,13 @@ private[rtm] class SlackRtmConnectionActor(token: String, state: RtmState, durat
             case Success(event) =>
               state.update(event)
               listeners.foreach(_ ! event)
-            case Failure(e) => log.error(e, s"[SlackRtmClient][$teamDomain] Error reading event: $payload")
+            case Failure(e) => log.error(e, s"[SlackRtmClient] Error reading event: $payload")
           }
         } else {
           log.warning(s"invalid slack event : $payload")
         }
       } catch {
-        case e: Exception => log.error(e, s"[SlackRtmClient][$teamDomain] Error parsing text message")
+        case e: Exception => log.error(e, "[SlackRtmClient] Error parsing text message")
       }
     case TypingMessage(channelId) =>
       val nextId = idCounter.getAndIncrement
@@ -146,43 +158,46 @@ private[rtm] class SlackRtmConnectionActor(token: String, state: RtmState, durat
     case RemoveEventListener(listener) =>
       listeners -= listener
     case WebSocketClientConnected =>
-      log.info(s"[SlackRtmConnectionActor][$teamDomain] WebSocket Client successfully connected")
+      log.info("[SlackRtmConnectionActor] WebSocket Client successfully connected")
       connectFailures = 0
     case WebSocketClientDisconnected =>
       handleWebSocketDisconnect(sender)
     case WebSocketClientConnectFailed =>
       val delay = Math.pow(2.0, connectFailures.toDouble).toInt
-      log.info(s"[SlackRtmConnectionActor][$teamDomain] WebSocket Client failed to connect, retrying in {} seconds", delay)
+      log.info("[SlackRtmConnectionActor] WebSocket Client failed to connect, retrying in {} seconds", delay)
       connectFailures += 1
       webSocketClient = None
-      if(connectFailures < 5)
       context.system.scheduler.scheduleOnce(delay.seconds, self, ReconnectWebSocket)
     case ReconnectWebSocket =>
       connectWebSocket()
     case Terminated(actor) =>
       listeners -= actor
       handleWebSocketDisconnect(actor)
+    case SendPing =>
+      val nextId = idCounter.getAndIncrement
+      val payload = Json.stringify(Json.toJson(Ping(nextId)))
+      webSocketClient.get ! SendWSMessage(TextMessage(payload))
     case _ =>
       log.warning("doesn't match any case, skip")
   }
 
   def connectWebSocket() {
-    log.info(s"[SlackRtmConnectionActor][$teamDomain] Starting web socket client")
+    log.info("[SlackRtmConnectionActor] Starting web socket client")
     try {
       val initialRtmState = apiClient.startRealTimeMessageSession()
       state.reset(initialRtmState)
-      webSocketClient = Some(WebSocketClientActor(initialRtmState.url, teamDomain)(context))
+      webSocketClient = Some(WebSocketClientActor(initialRtmState.url)(context))
       webSocketClient.foreach(context.watch)
     } catch {
       case e: Exception =>
-        log.error(e, s"Caught exception trying to connect websocket for: $teamDomain")
+        log.error(e, "Caught exception trying to connect websocket")
         self ! WebSocketClientConnectFailed
     }
   }
 
   def handleWebSocketDisconnect(actor: ActorRef) {
     if (webSocketClient.isDefined && webSocketClient.get == actor) {
-      log.info(s"[SlackRtmConnectionActor][$teamDomain] WebSocket Client disconnected, reconnecting")
+      log.info("[SlackRtmConnectionActor] WebSocket Client disconnected, reconnecting")
       webSocketClient.foreach(context.stop)
       connectWebSocket()
     }
@@ -197,5 +212,10 @@ private[rtm] class SlackRtmConnectionActor(token: String, state: RtmState, durat
   }
 }
 
-private[rtm] case class MessageSend(id: Long, channel: String, text: String, thread_ts: Option[String] = None, `type`: String = "message")
+private[rtm] case class MessageSend(id: Long,
+                                    channel: String,
+                                    text: String,
+                                    thread_ts: Option[String] = None,
+                                    `type`: String = "message")
 private[rtm] case class MessageTyping(id: Long, channel: String, `type`: String = "typing")
+private[rtm] case class Ping(id: Long, `type`: String = "ping")
