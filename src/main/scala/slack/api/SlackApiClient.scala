@@ -198,8 +198,8 @@ class SlackApiClient(token: String) {
   }
 
   def postEphemeral(channelId: String, userId: String, text: String, asUser: Option[Boolean] = None,
-                    attachments: Option[Seq[Attachment]] = None, linkNames: Option[String] = None,
-                    parse: Option[String] = None)(implicit ec: ExecutionContext): Future[String] = {
+                    attachments: Option[Seq[Attachment]] = None, blocks: Option[Seq[Block]] = None,
+                    linkNames: Option[String] = None, parse: Option[String] = None)(implicit ec: ExecutionContext): Future[String] = {
     val res = makeApiMethodRequest (
       "chat.postEphemeral",
       "channel" -> channelId,
@@ -214,9 +214,9 @@ class SlackApiClient(token: String) {
 
   def postChatMessage(channelId: String, text: String, username: Option[String] = None, asUser: Option[Boolean] = None,
                       parse: Option[String] = None, linkNames: Option[String] = None, attachments: Option[Seq[Attachment]] = None,
-                      unfurlLinks: Option[Boolean] = None, unfurlMedia: Option[Boolean] = None, iconUrl: Option[String] = None,
-                      iconEmoji: Option[String] = None, replaceOriginal: Option[Boolean]= None, deleteOriginal: Option[Boolean] = None,
-                      threadTs: Option[String] = None)(implicit ec: ExecutionContext): Future[String] = {
+                      blocks: Option[Seq[Block]] = None, unfurlLinks: Option[Boolean] = None, unfurlMedia: Option[Boolean] = None,
+                      iconUrl: Option[String] = None, iconEmoji: Option[String] = None, replaceOriginal: Option[Boolean]= None,
+                      deleteOriginal: Option[Boolean] = None, threadTs: Option[String] = None)(implicit ec: ExecutionContext): Future[String] = {
     val json = Json.obj(
       "channel" -> channelId,
       "text" -> text) ++
@@ -227,6 +227,7 @@ class SlackApiClient(token: String) {
       parse.map("parse" -> Json.toJson(_)),
       linkNames.map("link_names" -> Json.toJson(_)),
       attachments.map("attachments" -> Json.toJson(_)),
+      blocks.map("blocks" -> Json.toJson(_)),
       unfurlLinks.map("unfurl_links" -> Json.toJson(_)),
       unfurlMedia.map("unfurl_media" -> Json.toJson(_)),
       iconUrl.map("icon_url" -> Json.toJson(_)),

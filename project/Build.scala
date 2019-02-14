@@ -52,7 +52,7 @@ object Resolvers {
 }
 
 object Dependencies {
-  val akkaVersion = "2.5.18"
+  val akkaVersion = "2.4.8"
   val sprayVersion = "1.3.3"
   val playVersion = "2.4.6"
 
