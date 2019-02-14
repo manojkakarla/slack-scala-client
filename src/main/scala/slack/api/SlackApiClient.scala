@@ -200,15 +200,19 @@ class SlackApiClient(token: String) {
   def postEphemeral(channelId: String, userId: String, text: String, asUser: Option[Boolean] = None,
                     attachments: Option[Seq[Attachment]] = None, blocks: Option[Seq[Block]] = None,
                     linkNames: Option[String] = None, parse: Option[String] = None)(implicit ec: ExecutionContext): Future[String] = {
-    val res = makeApiMethodRequest (
-      "chat.postEphemeral",
+    val json = Json.obj(
       "channel" -> channelId,
       "text" -> text,
-      "user" -> userId,
-      "as_user" -> asUser,
-      "parse" -> parse,
-      "link_names" -> linkNames,
-      "attachments" -> attachments.map(a => Json.stringify(Json.toJson(a))))
+      "user" -> userId
+    ) ++
+      JsObject(Seq(
+        asUser.map("as_user" -> Json.toJson(_)),
+        parse.map("parse" -> Json.toJson(_)),
+        linkNames.map("link_names" -> Json.toJson(_)),
+        attachments.map("attachments" -> Json.toJson(_)),
+        blocks.map("blocks" -> Json.toJson(_))
+      ).flatten)
+    val res = makeApiJsonRequest("chat.postEphemeral", json)
     extract[String](res, "message_ts")
   }
 
@@ -241,15 +245,22 @@ class SlackApiClient(token: String) {
 
   def updateChatMessage(channelId: String, ts: String, text: String,
                         attachments: Option[Seq[Attachment]] = None,
+                        blocks: Option[Seq[Block]] = None,
                         parse: Option[String] = None, linkNames: Option[String] = None,
                         asUser: Option[Boolean] = None,
                         threadTs: Option[String] = None)(implicit ec: ExecutionContext): Future[UpdateResponse] = {
-    val res = makeApiMethodRequest("chat.update",
-      "channel" -> channelId, "ts" -> ts, "text" -> text,
-      "attachments" -> attachments.map(a => Json.stringify(Json.toJson(a))),
-      "parse" -> parse, "link_names" -> linkNames,
-      "as_user" -> asUser,
-      "thread_ts" -> threadTs)
+    val json = Json.obj(
+      "channel" -> channelId, "ts" -> ts, "text" -> text) ++
+      JsObject(Seq(
+        attachments.map("attachments" -> Json.toJson(_)),
+        blocks.map("blocks" -> Json.toJson(_)),
+        parse.map("parse" -> Json.toJson(_)),
+        linkNames.map("link_names" -> Json.toJson(_)),
+        asUser.map("as_user" -> Json.toJson(_)),
+        threadTs.map("thread_ts" -> Json.toJson(_))
+      ).flatten)
+
+    val res = makeApiJsonRequest("chat.update", json)
     res.map(_.as[UpdateResponse])
   }
 

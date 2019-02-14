@@ -121,8 +121,14 @@ class BlockingSlackApiClient(token: String, duration: FiniteDuration = 5.seconds
       unfurlLinks, unfurlMedia, iconUrl, iconEmoji, replaceOriginal, deleteOriginal, threadTs))
   }
 
-  def updateChatMessage(channelId: String, ts: String, text: String)(implicit ec: ExecutionContext): UpdateResponse = {
-    resolve(client.updateChatMessage(channelId, ts, text))
+  def updateChatMessage(channelId: String, ts: String, text: String,
+                        attachments: Option[Seq[Attachment]] = None,
+                        blocks: Option[Seq[Block]]= None,
+                        parse: Option[String] = None,
+                        linkNames: Option[String] = None,
+                        asUser: Option[Boolean] = None,
+                        threadTs: Option[String] = None)(implicit ec: ExecutionContext): UpdateResponse = {
+    resolve(client.updateChatMessage(channelId, ts, text, attachments, blocks, parse, linkNames, asUser, threadTs))
   }
 
 
