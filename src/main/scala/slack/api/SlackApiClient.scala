@@ -48,7 +48,7 @@ object SlackApiClient {
       if(ok) {
         parsed
       } else {
-        throw ApiError((parsed \ "error").as[String])
+        throw ApiError((parsed \ "error").as[String], Some(parsed.toString()))
       }
     }
   }
@@ -734,7 +734,7 @@ class SlackApiClient(token: String) {
 }
 
 case class InvalidResponseError(status: Int, body: String) extends Exception(s"Bad status code from Slack: $status")
-case class ApiError(code: String) extends Exception(code)
+case class ApiError(code: String, message: Option[String] = None) extends Exception(code)
 
 case class HistoryChunk (
   latest: Option[String],

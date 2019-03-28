@@ -17,6 +17,12 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 
+trait RtmFailureHandler {
+  def connectionFailed(state: RtmState, status: RtmConnectionStatus): Future[String]
+}
+
+case class RtmConnectionStatus(active: Boolean, connectedAt: Option[Long], failures: Int, failedAt: Seq[Long])
+
 object SlackRtmClient {
   def apply(token: String, duration: FiniteDuration = 5.seconds)(implicit arf: ActorRefFactory): SlackRtmClient = {
     new SlackRtmClient(token, duration)
@@ -63,6 +69,15 @@ class SlackRtmClient(token: String, duration: FiniteDuration = 5.seconds)(implic
     actor ! RemoveEventListener(listener)
   }
 
+  def addErrorHandler(handler: RtmFailureHandler) {
+    actor ! AddFailureHandler(handler)
+  }
+
+  def getStatus(): Future[RtmConnectionStatus] = {
+    (actor ? StatusRequest()).mapTo[RtmConnectionStatus]
+  }
+
+
   def getState(): RtmState = {
     state
   }
@@ -80,11 +95,13 @@ private[rtm] object SlackRtmConnectionActor {
 
   case class AddEventListener(listener: ActorRef)
   case class RemoveEventListener(listener: ActorRef)
+  case class AddFailureHandler(handler: RtmFailureHandler)
   case class SendMessage(channelId: String, text: String, ts_thread: Option[String] = None)
   case class BotEditMessage(channelId: String, ts: String, text: String, as_user: Boolean = true, `type`:String = "chat.update")
   case class TypingMessage(channelId: String)
   case class StateRequest()
   case class StateResponse(state: RtmState)
+  case class StatusRequest()
   case object ReconnectWebSocket
 
   def apply(token: String, state: RtmState, duration: FiniteDuration)(implicit arf: ActorRefFactory): ActorRef = {
@@ -99,9 +116,14 @@ private[rtm] class SlackRtmConnectionActor(token: String, state: RtmState, durat
   val listeners = MSet[ActorRef]()
   val idCounter = new AtomicLong(1L)
   val teamDomain = Try(state.team.domain).toOption.getOrElse("Team")
+  var failureHandler: Option[RtmFailureHandler] = None
 
   var connectFailures = 0
   var webSocketClient: Option[ActorRef] = None
+  var connectedAt: Option[Long] = None
+  var failedAt: Seq[Long] = Seq.empty
+
+  def getStatus = RtmConnectionStatus(webSocketClient.nonEmpty, connectedAt, connectFailures, failedAt)
 
   def receive = {
     case frame: TextFrame =>
@@ -135,14 +157,20 @@ private[rtm] class SlackRtmConnectionActor(token: String, state: RtmState, durat
       webSocketClient.get ! SendFrame(TextFrame(ByteString(payload)))
     case StateRequest() =>
       sender ! StateResponse(state)
+     case StatusRequest() =>
+      sender ! getStatus
     case AddEventListener(listener) =>
       listeners += listener
       context.watch(listener)
     case RemoveEventListener(listener) =>
       listeners -= listener
+    case AddFailureHandler(handler) =>
+      failureHandler = Some(handler)
     case WebSocketClientConnected =>
       log.info(s"[SlackRtmConnectionActor][$teamDomain] WebSocket Client successfully connected")
       connectFailures = 0
+      connectedAt = Some(System.currentTimeMillis())
+      failedAt = Seq.empty
     case WebSocketClientConnectFailed =>
       val delay = Math.pow(2.0, connectFailures.toDouble).toInt
       log.info(s"[SlackRtmConnectionActor][$teamDomain] WebSocket Client failed to connect, retrying in {} seconds", delay)
@@ -150,8 +178,11 @@ private[rtm] class SlackRtmConnectionActor(token: String, state: RtmState, durat
       webSocketClient = None
       if (connectFailures < 5)
         context.system.scheduler.scheduleOnce(delay.seconds, self, ReconnectWebSocket)
-      else
+      else {
+        failedAt = failedAt :+ System.currentTimeMillis()
         log.error(s"[SlackRtmConnectionActor][$teamDomain] WebSocket Client connect attempts exhausted, Restart manually")
+        failureHandler.map(_.connectionFailed(state, getStatus))
+      }
     case ReconnectWebSocket =>
       connectWebSocket()
     case Terminated(actor) =>

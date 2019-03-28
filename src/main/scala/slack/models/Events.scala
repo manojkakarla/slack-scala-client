@@ -51,13 +51,13 @@ case class ThreadReply (
 
 case class ReplyMessage (
   ts: String,
-  thread_ts: String,
-  reply_count: Int,
-  unread_count: Int,
+  thread_ts: Option[String],
+  reply_count: Option[Int],
+  unread_count: Option[Int],
   username: Option[String],
   user: Option[String],
   bot_id: Option[String],
-  replies: Seq[ThreadReply]
+  replies: Option[Seq[ThreadReply]]
 )
 
 case class MessageReplied (
