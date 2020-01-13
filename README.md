@@ -7,23 +7,29 @@ A Scala library for interacting with the Slack API and real time messaging inter
 
 ## Installation
 
-⚠️ Starting from version 0.2.4 (released on Nov 9 2018) there's a new Maven group id - update your build file configurations (`pom.xml` etc.). Also the project homepage has been moved to a new Github organization - thus is available at a new URL (as you can see).
-
 ### SBT
 
 Add SBT dependency:
 
-    libraryDependencies += "com.github.slack-scala-client" %% "slack-scala-client" % "0.2.5"
+    libraryDependencies += "com.github.slack-scala-client" %% "slack-scala-client" % "0.2.7"
 
 
 ### Maven
+
+Scala 2.13:
+
+        <dependency>
+            <groupId>com.github.slack-scala-client</groupId>
+            <artifactId>slack-scala-client_2.13</artifactId>
+            <version>0.2.7</version>
+        </dependency>
 
 Scala 2.12:
 
         <dependency>
             <groupId>com.github.slack-scala-client</groupId>
             <artifactId>slack-scala-client_2.12</artifactId>
-            <version>0.2.5</version>
+            <version>0.2.7</version>
         </dependency>
 
 Scala 2.11:
@@ -31,19 +37,8 @@ Scala 2.11:
         <dependency>
             <groupId>com.github.slack-scala-client</groupId>
             <artifactId>slack-scala-client_2.11</artifactId>
-            <version>0.2.5</version>
+            <version>0.2.7</version>
         </dependency>
-
-
-## Scaladoc
-
-* 0.2.5 - missing
-* 0.2.4 - missing
-* 0.2.3 - missing
-* [0.2.2](http://doc.bryangilbert.com/slack-scala-client/0.2.2/index.html)
-* [0.2.0](http://doc.bryangilbert.com/slack-scala-client/0.2.0/)
-* [0.1.8](http://doc.bryangilbert.com/slack-scala-client/0.1.8/)
-
 
 ## API Client Usage
 
@@ -179,26 +174,10 @@ client.onMessage { message =>
 }
 ```
 
-
-## WebSocket Re-Connection Behavior
-
-Since `0.2.4` the library sends a ping message to Slack every minute. Pong
-message is received (but not checked upon). That is to sustain a Slack
-websocket connection even if idle - see [Slack doc for ping and pong](https://api.slack.com/rtm#ping_and_pong).
-
-Previously the library caused the client to reconnect every 1 or 2 minute
-with the following messages:
-```
-[WebSocketClientActor] WebSocket disconnected.
-[SlackRtmConnectionActor] WebSocket Client disconnected, reconnecting
-[SlackRtmConnectionActor] Starting web socket client
-```
-
-
 ## Caveat Emptor
 
 - The Slack API contains a lot methods and not every implemented API method has been executed (i.e. some may not work; pull requests accepted!)
-- Responses to RTM messages sent out are not currently checked to verify they were successfully received (Coming Soon!)
+- Responses to RTM messages sent out are not currently checked to verify they were successfully received
 - Investigate a way to ensure all missed messages are received during a disconnection
 - A small number of response types have yet to be fleshed out
 
