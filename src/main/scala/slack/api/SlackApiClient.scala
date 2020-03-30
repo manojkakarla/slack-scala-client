@@ -199,7 +199,7 @@ class SlackApiClient(token: String) {
 
   def postEphemeral(channelId: String, userId: String, text: String, asUser: Option[Boolean] = None,
                     attachments: Option[Seq[Attachment]] = None, blocks: Option[Seq[Block]] = None,
-                    linkNames: Option[String] = None, parse: Option[String] = None)(implicit ec: ExecutionContext): Future[String] = {
+                    linkNames: Option[Boolean] = None, parse: Option[String] = None)(implicit ec: ExecutionContext): Future[String] = {
     val json = Json.obj(
       "channel" -> channelId,
       "text" -> text,
@@ -220,7 +220,8 @@ class SlackApiClient(token: String) {
                       parse: Option[String] = None, linkNames: Option[String] = None, attachments: Option[Seq[Attachment]] = None,
                       blocks: Option[Seq[Block]] = None, unfurlLinks: Option[Boolean] = None, unfurlMedia: Option[Boolean] = None,
                       iconUrl: Option[String] = None, iconEmoji: Option[String] = None, replaceOriginal: Option[Boolean]= None,
-                      deleteOriginal: Option[Boolean] = None, threadTs: Option[String] = None)(implicit ec: ExecutionContext): Future[String] = {
+                      deleteOriginal: Option[Boolean] = None, threadTs: Option[String] = None,
+                      replyBroadcast: Option[Boolean] = None)(implicit ec: ExecutionContext): Future[String] = {
     val json = Json.obj(
       "channel" -> channelId,
       "text" -> text) ++
@@ -237,7 +238,8 @@ class SlackApiClient(token: String) {
       iconUrl.map("icon_url" -> Json.toJson(_)),
       iconEmoji.map("icon_emoji" -> Json.toJson(_)),
       replaceOriginal.map("replace_original" -> Json.toJson(_)),
-      deleteOriginal.map("delete_original" -> Json.toJson(_))
+      deleteOriginal.map("delete_original" -> Json.toJson(_)),
+      replyBroadcast.map("reply_broadcast" -> Json.toJson(_))
     ).flatten)
     val res = makeApiJsonRequest("chat.postMessage", json)
     extract[String](res, "ts")
@@ -278,6 +280,18 @@ class SlackApiClient(token: String) {
     extract[Boolean](res, "ok")
   }
 
+  def openConversation(channelId: Option[String],
+                       users: Option[Seq[String]],
+                       returnIm: Option[Boolean])(implicit ec: ExecutionContext): Future[String] = {
+    val json = JsObject(Seq(
+        channelId.map("channel" -> JsString(_)),
+        users.map(u => "users" -> JsString(u.mkString(","))),
+        returnIm.map("return_im" -> JsBoolean(_))
+      ).flatten)
+    val res = makeApiJsonRequest("conversations.open", json)
+    res.map(js => (js \ "channel" \ "id").as[String])
+  }
+
   def inviteToConversation(channelId: String, members: Seq[String])(implicit ec: ExecutionContext): Future[Boolean] = {
     val res = makeApiMethodRequest("conversations.invite", "channel" -> channelId, "users" -> members.mkString(","))
     extract[Boolean](res, "ok")
@@ -286,6 +300,21 @@ class SlackApiClient(token: String) {
   def unarchiveConversation(channelId: String)(implicit ec: ExecutionContext): Future[Boolean] = {
     val res = makeApiMethodRequest("conversations.unarchive", "channel" -> channelId)
     extract[Boolean](res, "ok")
+  }
+
+  def renameConversation(channelId: String, name: String)(implicit ec: ExecutionContext): Future[Conversation] = {
+    val res = makeApiMethodRequest("conversations.rename", "channel" -> channelId, "name" -> name)
+    res.map(_.as[Conversation])
+  }
+
+  def setConversationPurpose(channelId: String, purpose: String)(implicit ec: ExecutionContext): Future[String] = {
+    val res = makeApiMethodRequest("conversations.setPurpose", "channel" -> channelId, "purpose" -> purpose)
+    extract[String](res, "purpose")
+  }
+
+  def setConversationTopic(channelId: String, topic: String)(implicit ec: ExecutionContext): Future[String] = {
+    val res = makeApiMethodRequest("conversations.setTopic", "channel" -> channelId, "topic" -> topic)
+    extract[String](res, "topic")
   }
 
   /****************************/
