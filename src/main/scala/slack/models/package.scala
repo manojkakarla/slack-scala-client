@@ -38,7 +38,6 @@ package object models {
   implicit val teamFmt = Json.format[Team]
   implicit val channelValueFmt = Json.format[ChannelValue]
   implicit val groupValueFmt = Json.format[GroupValue]
-  implicit val conversationFmt = Json.format[Conversation]
   implicit val imFmt = Json.format[Im]
   implicit val channelFmt = Json.format[Channel]
   implicit val groupFmt = Json.format[Group]

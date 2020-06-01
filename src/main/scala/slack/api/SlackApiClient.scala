@@ -280,6 +280,11 @@ class SlackApiClient(token: String) {
     extract[Boolean](res, "ok")
   }
 
+  def createConversation(name: String, isPrivate: Boolean, userIds: Seq[String] = Seq.empty)(implicit ec: ExecutionContext): Future[Channel] = {
+    val res = makeApiJsonRequest("conversations.create", Json.obj("name" -> name, "is_private" -> isPrivate, "user_ids" -> userIds))
+    res.map(js => (js \ "channel").as[Channel])
+  }
+
   def openConversation(channelId: Option[String],
                        users: Option[Seq[String]],
                        returnIm: Option[Boolean])(implicit ec: ExecutionContext): Future[String] = {
@@ -297,24 +302,54 @@ class SlackApiClient(token: String) {
     extract[Boolean](res, "ok")
   }
 
+  def kickFromConversation(channelId: String, user: String)(implicit ec: ExecutionContext): Future[Boolean] = {
+    val res = makeApiMethodRequest("conversations.kick", "channel" -> channelId, "user" -> user)
+    extract[Boolean](res, "ok")
+  }
+
+  def getConversationInfo(channelId: String, includeLocale: Boolean = true, includeNumMembers: Boolean = false)(implicit ec: ExecutionContext): Future[Channel] = {
+    val res = makeApiMethodRequest("conversations.info", "channel" -> channelId,
+      "include_locale" -> includeLocale.toString, "include_num_members" -> includeNumMembers.toString)
+    extract[Channel](res, "channel")
+  }
+
+  def getConversationHistory(channelId: String, latest: Option[String] = None, oldest: Option[String] = None,
+                      inclusive: Option[Int] = None, limit: Option[Int] = None)(implicit ec: ExecutionContext): Future[HistoryChunk] = {
+    val res = makeApiMethodRequest (
+      "conversations.history",
+      "channel" -> channelId,
+      "latest" -> latest,
+      "oldest" -> oldest,
+      "inclusive" -> inclusive,
+      "limit" -> limit)
+    res.map(_.as[HistoryChunk])
+  }
+
+  def listConversations(excludeArchived: Boolean = false, limit: Int = 100, types: Seq[ConversationType] = Seq.empty)(implicit ec: ExecutionContext): Future[Seq[Channel]] = {
+    val typesStr = if(types.nonEmpty) types.map(_.conversationType).mkString(",") else "public_channel"
+    val res = makeApiJsonRequest("conversations.list",
+      Json.obj("exclude_archived" -> excludeArchived, "limit" -> limit, "types" -> typesStr))
+    res.map(js => (js \ "channels").as[Seq[Channel]])
+  }
+
   def unarchiveConversation(channelId: String)(implicit ec: ExecutionContext): Future[Boolean] = {
     val res = makeApiMethodRequest("conversations.unarchive", "channel" -> channelId)
     extract[Boolean](res, "ok")
   }
 
-  def renameConversation(channelId: String, name: String)(implicit ec: ExecutionContext): Future[Conversation] = {
+  def renameConversation(channelId: String, name: String)(implicit ec: ExecutionContext): Future[Channel] = {
     val res = makeApiMethodRequest("conversations.rename", "channel" -> channelId, "name" -> name)
-    res.map(_.as[Conversation])
+    res.map(_.as[Channel])
   }
 
-  def setConversationPurpose(channelId: String, purpose: String)(implicit ec: ExecutionContext): Future[String] = {
+  def setConversationPurpose(channelId: String, purpose: String)(implicit ec: ExecutionContext): Future[Boolean] = {
     val res = makeApiMethodRequest("conversations.setPurpose", "channel" -> channelId, "purpose" -> purpose)
-    extract[String](res, "purpose")
+    extract[Boolean](res, "ok")
   }
 
-  def setConversationTopic(channelId: String, topic: String)(implicit ec: ExecutionContext): Future[String] = {
+  def setConversationTopic(channelId: String, topic: String)(implicit ec: ExecutionContext): Future[Boolean] = {
     val res = makeApiMethodRequest("conversations.setTopic", "channel" -> channelId, "topic" -> topic)
-    extract[String](res, "topic")
+    extract[Boolean](res, "ok")
   }
 
   /****************************/
@@ -743,6 +778,10 @@ class SlackApiClient(token: String) {
     extract[Boolean](res, "ok")
   }
 
+  def lookupUserByEmail(emailId: String)(implicit ec: ExecutionContext): Future[User] = {
+    val res = makeApiMethodRequest("users.lookupByEmail", "email" -> emailId)
+    extract[User](res, "user")
+  }
 
   /*****************************/
   /****  Private Functions  ****/
