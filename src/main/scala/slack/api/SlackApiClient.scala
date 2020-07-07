@@ -313,6 +313,11 @@ class SlackApiClient(token: String) {
     extract[Channel](res, "channel")
   }
 
+  def getConversationMembers(channelId: String, limit: Int = 100)(implicit ec: ExecutionContext): Future[Seq[String]] = {
+    val res = makeApiMethodRequest("conversations.members", "channel" -> channelId, "limit" -> limit.toString)
+    extract[Seq[String]](res, "members")
+  }
+
   def getConversationHistory(channelId: String, latest: Option[String] = None, oldest: Option[String] = None,
                       inclusive: Option[Int] = None, limit: Option[Int] = None)(implicit ec: ExecutionContext): Future[HistoryChunk] = {
     val res = makeApiMethodRequest (
@@ -327,8 +332,8 @@ class SlackApiClient(token: String) {
 
   def listConversations(excludeArchived: Boolean = false, limit: Int = 100, types: Seq[ConversationType] = Seq.empty)(implicit ec: ExecutionContext): Future[Seq[Channel]] = {
     val typesStr = if(types.nonEmpty) types.map(_.conversationType).mkString(",") else "public_channel"
-    val res = makeApiJsonRequest("conversations.list",
-      Json.obj("exclude_archived" -> excludeArchived, "limit" -> limit, "types" -> typesStr))
+    val res = makeApiMethodRequest("conversations.list",
+      "exclude_archived" -> excludeArchived, "limit" -> limit, "types" -> typesStr)
     res.map(js => (js \ "channels").as[Seq[Channel]])
   }
 
