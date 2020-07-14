@@ -17,6 +17,12 @@ import akka.pattern.ask
 import play.api.libs.json._
 import akka.http.scaladsl.model.ws.TextMessage
 
+trait RtmFailureHandler {
+  def connectionFailed(state: RtmState, status: RtmConnectionStatus): Future[String]
+}
+
+case class RtmConnectionStatus(active: Boolean, connectedAt: Option[Long], failures: Int, failedAt: Seq[Long])
+
 object SlackRtmClient {
   def apply(token: String,
             slackApiBaseUri: Uri = SlackApiClient.defaultSlackApiBaseUri,
@@ -70,6 +76,15 @@ class SlackRtmClient(token: String, slackApiBaseUri: Uri, duration: FiniteDurati
     actor ! RemoveEventListener(listener)
   }
 
+  def addErrorHandler(handler: RtmFailureHandler) {
+    actor ! AddFailureHandler(handler)
+  }
+
+  def getStatus(): Future[RtmConnectionStatus] = {
+    (actor ? StatusRequest).mapTo[RtmConnectionStatus]
+  }
+
+
   def getState(): RtmState = {
     state
   }
@@ -88,6 +103,7 @@ private[rtm] object SlackRtmConnectionActor {
 
   case class AddEventListener(listener: ActorRef)
   case class RemoveEventListener(listener: ActorRef)
+  case class AddFailureHandler(handler: RtmFailureHandler)
   case class SendMessage(channelId: String, text: String, ts_thread: Option[String] = None)
   case class BotEditMessage(channelId: String,
                             ts: String,
@@ -96,6 +112,7 @@ private[rtm] object SlackRtmConnectionActor {
                             `type`: String = "chat.update")
   case class TypingMessage(channelId: String)
   case object StateRequest
+  case object StatusRequest
   case class StateResponse(state: RtmState)
   case object ReconnectWebSocket
   case object SendPing
@@ -113,6 +130,8 @@ class SlackRtmConnectionActor(apiClient: BlockingSlackApiClient, state: RtmState
   implicit val system = context.system
   val listeners = MSet[ActorRef]()
   val idCounter = new AtomicLong(1L)
+  val teamDomain = Try(state.team.domain).toOption.getOrElse("Team")
+  var failureHandler: Option[RtmFailureHandler] = None
 
   override val supervisorStrategy =
     OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1.minute, loggingEnabled = true) {
@@ -121,6 +140,10 @@ class SlackRtmConnectionActor(apiClient: BlockingSlackApiClient, state: RtmState
 
   var connectFailures = 0
   var webSocketClient: Option[ActorRef] = None
+  var connectedAt: Option[Long] = None
+  var failedAt: Seq[Long] = Seq.empty
+
+  def getStatus = RtmConnectionStatus(webSocketClient.nonEmpty, connectedAt, connectFailures, failedAt)
 
   context.system.scheduler.schedule(1.minute, 1.minute, self, SendPing)
 
@@ -141,22 +164,34 @@ class SlackRtmConnectionActor(apiClient: BlockingSlackApiClient, state: RtmState
       webSocketClient.foreach(_ ! SendWSMessage(TextMessage(payload)))
     case StateRequest =>
       sender ! StateResponse(state)
+     case StatusRequest =>
+      sender ! getStatus
     case AddEventListener(listener) =>
       listeners += listener
       context.watch(listener)
     case RemoveEventListener(listener) =>
       listeners -= listener
+    case AddFailureHandler(handler) =>
+      failureHandler = Some(handler)
     case WebSocketClientConnected =>
-      log.info("[SlackRtmConnectionActor] WebSocket Client successfully connected")
+      log.info(s"[SlackRtmConnectionActor][$teamDomain] WebSocket Client successfully connected")
       connectFailures = 0
+      connectedAt = Some(System.currentTimeMillis())
+      failedAt = Seq.empty
     case WebSocketClientDisconnected =>
       handleWebSocketDisconnect(sender)
     case WebSocketClientConnectFailed =>
       val delay = Math.pow(2.0, connectFailures.toDouble).toInt
-      log.info("[SlackRtmConnectionActor] WebSocket Client failed to connect, retrying in {} seconds", delay)
+      log.info(s"[SlackRtmConnectionActor][$teamDomain] WebSocket Client failed to connect, retrying in {} seconds", delay)
       connectFailures += 1
       webSocketClient = None
-      context.system.scheduler.scheduleOnce(delay.seconds, self, ReconnectWebSocket)
+      if (connectFailures < 10)
+        context.system.scheduler.scheduleOnce(delay.seconds, self, ReconnectWebSocket)
+      else {
+        failedAt = failedAt :+ System.currentTimeMillis()
+        log.error(s"[SlackRtmConnectionActor][$teamDomain] WebSocket Client connect attempts exhausted, Restart manually")
+        failureHandler.map(_.connectionFailed(state, getStatus))
+      }
     case ReconnectWebSocket =>
       connectWebSocket()
     case Terminated(actor) =>
@@ -179,18 +214,18 @@ class SlackRtmConnectionActor(apiClient: BlockingSlackApiClient, state: RtmState
           case Success(event) =>
             state.update(event)
             listeners.foreach(_ ! event)
-          case Failure(e) => log.error(e, s"[SlackRtmClient] Error reading event: $payload")
+          case Failure(e) => log.error(e, s"[SlackRtmClient][$teamDomain] Error reading event: $payload")
         }
       } else {
         log.warning(s"invalid slack event : $payload")
       }
     } catch {
-      case e: Exception => log.error(e, "[SlackRtmClient] Error parsing text message")
+      case e: Exception => log.error(e, s"[SlackRtmClient][$teamDomain] Error parsing text message")
     }
   }
 
   def connectWebSocket(): Unit = {
-    log.info("[SlackRtmConnectionActor] Starting web socket client")
+    log.info(s"[SlackRtmConnectionActor][$teamDomain] Starting web socket client")
     try {
       val initialRtmState = apiClient.startRealTimeMessageSession()
       state.reset(initialRtmState)
@@ -198,14 +233,14 @@ class SlackRtmConnectionActor(apiClient: BlockingSlackApiClient, state: RtmState
       webSocketClient.foreach(context.watch)
     } catch {
       case e: Exception =>
-        log.error(e, "Caught exception trying to connect websocket")
+        log.error(e, s"Caught exception trying to connect websocket for: $teamDomain")
         self ! WebSocketClientConnectFailed
     }
   }
 
   def handleWebSocketDisconnect(actor: ActorRef): Unit = {
     if (webSocketClient.contains(actor)) {
-      log.info("[SlackRtmConnectionActor] WebSocket Client disconnected, reconnecting")
+      log.info(s"[SlackRtmConnectionActor][$teamDomain] WebSocket Client disconnected, reconnecting")
       webSocketClient.foreach(context.stop)
       connectWebSocket()
     }

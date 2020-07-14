@@ -4,13 +4,13 @@ import sbt._
 object BuildSettings {
   val buildOrganization = "com.github.slack-scala-client"
   val buildVersion      = "0.2.10"
-  val buildScalaVersion = "2.12.11"
+  val buildScalaVersion = "2.11.12"
 
   val settings = Seq (
     organization       := buildOrganization,
     version            := buildVersion,
     scalaVersion       := buildScalaVersion,
-    crossScalaVersions :=  Seq("2.11.12", scalaVersion.value, "2.13.2"),
+    crossScalaVersions :=  Seq("2.12.11", scalaVersion.value, "2.13.2"),
     publishMavenStyle  := true,
     credentials += Credentials(Path.userHome / ".sbt" / ".credentials"),
     publishTo          := {
@@ -46,13 +46,13 @@ object BuildSettings {
 }
 
 object Dependencies {
-  val akkaVersion = "2.5.31"
+  val akkaVersion = "2.5.23"
 
   val akkaActor = "com.typesafe.akka" %% "akka-actor" % akkaVersion
   val akkaStream = "com.typesafe.akka" %% "akka-stream" % akkaVersion
-  val akkaHttp = "com.typesafe.akka" %% "akka-http-core" % "10.1.12"
+  val akkaHttp = "com.typesafe.akka" %% "akka-http-core" % "10.1.10"
 
-  val playJson = "com.typesafe.play" %% "play-json" % "2.7.4"
+  val playJson = "com.typesafe.play" %% "play-json" % "2.5.19"
 
   val scalatest = "org.scalatest" %% "scalatest" % "3.2.0" % Test
 

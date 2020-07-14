@@ -25,10 +25,13 @@ case class Message(ts: String,
                    user: String,
                    text: String,
                    is_starred: Option[Boolean],
-                   thread_ts: Option[String])
+                   thread_ts: Option[String],
+                   files: Option[Seq[SlackFile]])
     extends SlackEvent
 
-case class EditMessage(user: Option[String], text: String, ts: String)
+case class EditMessage(text: String, ts: String, user: Option[String], bot_id: Option[String],
+                       subtype: Option[String],
+                       attachments: Option[Seq[Attachment]])
 
 case class ReplyMarker(user: String, ts: String)
 

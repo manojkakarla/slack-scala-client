@@ -52,6 +52,7 @@ object SlackApiClient {
   private[api] implicit val filesResponseFmt     = Json.format[FilesResponse]
   private[api] implicit val fileInfoFmt          = Json.format[FileInfo]
   private[api] implicit val reactionsResponseFmt = Json.format[ReactionsResponse]
+  private[api] implicit val pinsResponseFmt = Json.format[PinsResponse]
 
   val defaultSlackApiBaseUri = Uri("https://slack.com/api/")
 
@@ -89,7 +90,7 @@ object SlackApiClient {
           if ((parsed \ "ok").as[Boolean]) {
             Right(parsed)
           } else {
-            throw ApiError((parsed \ "error").as[String])
+            throw ApiError((parsed \ "error").as[String], Some(parsed.toString()))
           }
         }
       case response if response.status.intValue == 429 =>
@@ -282,19 +283,6 @@ class SlackApiClient private (token: String, slackApiBaseUri: Uri) {
     extract[Seq[Channel]](res, "channels")
   }
 
-  def listConversations(channelTypes: Seq[ConversationType] = Seq(PublicChannel), excludeArchived: Int = 0)(implicit system: ActorSystem): Future[Seq[Channel]] = {
-    val params = Seq(
-      "exclude_archived" -> excludeArchived.toString,
-      "types" -> channelTypes.map(_.conversationType).mkString(",")
-    )
-    paginateCollection[Channel](apiMethod = "conversations.list", queryParams = params,field = "channels")
-  }
-
-  def getConversationInfo(channelId: String, includeLocale: Boolean = true, includeNumMembers: Boolean = false)(implicit system: ActorSystem): Future[Channel] = {
-    val res = makeApiMethodRequest("conversations.info", "channel" -> channelId, "include_locale" -> includeLocale.toString, "include_num_members" -> includeNumMembers.toString)
-    extract[Channel](res, "channel")
-  }
-
   def leaveChannel(channelId: String)(implicit system: ActorSystem): Future[Boolean] = {
     val res = makeApiMethodRequest("channels.leave", "channel" -> channelId)
     extract[Boolean](res, "ok")
@@ -423,6 +411,98 @@ class SlackApiClient private (token: String, slackApiBaseUri: Uri) {
       ).flatten)
     val res = makeApiJsonRequest("chat.update", json)
     res.map(_.as[UpdateResponse])(system.dispatcher)
+  }
+
+  /**********************************/
+  /****  Conversation Endpoints  ****/
+  /**********************************/
+
+  def archiveConversation(channelId: String)(implicit system: ActorSystem): Future[Boolean] = {
+    val res = makeApiMethodRequest("conversations.archive", "channel" -> channelId)
+    extract[Boolean](res, "ok")
+  }
+
+  def closeConversation(channelId: String)(implicit system: ActorSystem): Future[Boolean] = {
+    val res = makeApiMethodRequest("conversations.close", "channel" -> channelId)
+    extract[Boolean](res, "ok")
+  }
+
+  def createConversation(name: String, isPrivate: Boolean, userIds: Seq[String] = Seq.empty)(implicit system: ActorSystem): Future[Channel] = {
+    val res = makeApiJsonRequest("conversations.create", Json.obj("name" -> name, "is_private" -> isPrivate, "user_ids" -> userIds))
+    res.map(js => (js \ "channel").as[Channel])(system.dispatcher)
+  }
+
+  def openConversation(channelId: Option[String],
+                       users: Option[Seq[String]],
+                       returnIm: Option[Boolean])(implicit system: ActorSystem): Future[String] = {
+    val json = JsObject(Seq(
+      channelId.map("channel" -> JsString(_)),
+      users.map(u => "users" -> JsString(u.mkString(","))),
+      returnIm.map("return_im" -> JsBoolean(_))
+    ).flatten)
+    val res = makeApiJsonRequest("conversations.open", json)
+    res.map(js => (js \ "channel" \ "id").as[String])(system.dispatcher)
+  }
+
+  def inviteToConversation(channelId: String, members: Seq[String])(implicit system: ActorSystem): Future[Boolean] = {
+    val res = makeApiMethodRequest("conversations.invite", "channel" -> channelId, "users" -> members.mkString(","))
+    extract[Boolean](res, "ok")
+  }
+
+  def kickFromConversation(channelId: String, user: String)(implicit system: ActorSystem): Future[Boolean] = {
+    val res = makeApiMethodRequest("conversations.kick", "channel" -> channelId, "user" -> user)
+    extract[Boolean](res, "ok")
+  }
+
+  def getConversationInfo(channelId: String, includeLocale: Boolean = true, includeNumMembers: Boolean = false)(implicit system: ActorSystem): Future[Channel] = {
+    val res = makeApiMethodRequest("conversations.info", "channel" -> channelId,
+      "include_locale" -> includeLocale.toString, "include_num_members" -> includeNumMembers.toString)
+    extract[Channel](res, "channel")
+  }
+
+  def getConversationMembers(channelId: String, limit: Int = 100)(implicit system: ActorSystem): Future[Seq[String]] = {
+    val res = makeApiMethodRequest("conversations.members", "channel" -> channelId, "limit" -> limit.toString)
+    extract[Seq[String]](res, "members")
+  }
+
+  def getConversationHistory(channelId: String, latest: Option[String] = None, oldest: Option[String] = None,
+                             inclusive: Option[Int] = None, limit: Option[Int] = None)(implicit system: ActorSystem): Future[HistoryChunk] = {
+    val res = makeApiMethodRequest(
+      "conversations.history",
+      "channel" -> channelId,
+      "latest" -> latest,
+      "oldest" -> oldest,
+      "inclusive" -> inclusive,
+      "limit" -> limit)
+    res.map(_.as[HistoryChunk])(system.dispatcher)
+  }
+
+  def listConversations(channelTypes: Seq[ConversationType] = Seq(PublicChannel),
+                        excludeArchived: Boolean = false, limit: Int = 100)(implicit system: ActorSystem): Future[Seq[Channel]] = {
+    val params = Seq(
+      "types" -> channelTypes.map(_.conversationType).mkString(","),
+      "exclude_archived" -> excludeArchived, "limit" -> limit)
+    paginateCollection[Channel]("conversations.list", queryParams = params, field = "channels")
+  }
+
+  def unarchiveConversation(channelId: String)(implicit system: ActorSystem): Future[Boolean] = {
+    val res = makeApiMethodRequest("conversations.unarchive", "channel" -> channelId)
+    extract[Boolean](res, "ok")
+  }
+
+  def renameConversation(channelId: String, name: String)(implicit system: ActorSystem): Future[Channel] = {
+    val res = makeApiMethodRequest("conversations.rename", "channel" -> channelId, "name" -> name)
+    res.map(_.as[Channel])(system.dispatcher)
+  }
+
+  def setConversationPurpose(channelId: String, purpose: String)(implicit system: ActorSystem): Future[Boolean] = {
+    val res = makeApiMethodRequest("conversations.setPurpose", "channel" -> channelId, "purpose" -> purpose)
+    extract[Boolean](res, "ok")
+  }
+
+  def setConversationTopic(channelId: String, topic: String)(implicit system: ActorSystem): Future[Boolean] = {
+    val res = makeApiMethodRequest("conversations.setTopic", "channel" -> channelId, "topic" -> topic)
+    extract[Boolean](res, "ok")
   }
 
   /****************************/
@@ -670,6 +750,32 @@ class SlackApiClient private (token: String, slackApiBaseUri: Uri) {
     res.map(_.as[HistoryChunk])(system.dispatcher)
   }
 
+  /**************************/
+  /****  Pins Endpoints  ****/
+  /**************************/
+
+  def addPin(channelId: String, timestamp: String)(implicit system: ActorSystem): Future[Boolean] = {
+    val res = makeApiJsonRequest("pins.add", Json.obj("channel" -> channelId, "timestamp" -> timestamp))
+    extract[Boolean](res, "ok")
+  }
+
+  def listPins(channelId: String)(implicit system: ActorSystem): Future[PinsResponse] = {
+    val res = makeApiMethodRequest("pins.list", "channel" -> channelId)
+    res.map(_.as[PinsResponse])(system.dispatcher)
+  }
+
+  def removePin(channelId: String, timestamp: Option[String] = None,
+                file: Option[String] = None, fileComment: Option[String] = None)(implicit system: ActorSystem): Future[Boolean] = {
+    val res = makeApiMethodRequest("pins.remove", "channel" -> channelId,
+      "file" -> file, "file_comment" -> fileComment, "timestamp" -> timestamp)
+    extract[Boolean](res, "ok")
+  }
+
+  def removePin(channelId: String, timestamp: String)(implicit system: ActorSystem): Future[Boolean] = {
+    val res = makeApiMethodRequest("pins.remove", "channel" -> channelId, "timestamp" -> timestamp)
+    extract[Boolean](res, "ok")
+  }
+
   /******************************/
   /****  Reaction Endpoints  ****/
   /******************************/
@@ -851,7 +957,7 @@ class SlackApiClient private (token: String, slackApiBaseUri: Uri) {
 
   def listUsers()(implicit system: ActorSystem): Future[Seq[User]] = {
     val params = Seq("limit" -> 100)
-    paginateCollection[User](apiMethod = "users.list", queryParams = params,field = "members")
+    paginateCollection[User](apiMethod = "users.list", queryParams = params, field = "members")
   }
 
   def setUserActive(userId: String)(implicit system: ActorSystem): Future[Boolean] = {
@@ -985,7 +1091,7 @@ class SlackApiClient private (token: String, slackApiBaseUri: Uri) {
 }
 
 case class InvalidResponseError(status: Int, body: String) extends Exception(s"Bad status code from Slack: $status")
-case class ApiError(code: String) extends Exception(code)
+case class ApiError(code: String, message: Option[String] = None) extends Exception(code)
 
 case class HistoryChunk(latest: Option[String], messages: Seq[JsValue], has_more: Boolean)
 
@@ -994,6 +1100,8 @@ case class RepliesChunk(has_more: Boolean, messages: Seq[JsValue], ok: Boolean)
 case class FileInfo(file: SlackFile, comments: Seq[SlackComment], paging: PagingObject)
 
 case class FilesResponse(files: Seq[SlackFile], paging: PagingObject)
+
+case class PinsResponse (items: Seq[JsValue])
 
 case class ReactionsResponse(items: Seq[JsValue], // TODO: Parse out each object type w/ reactions
                              paging: PagingObject)

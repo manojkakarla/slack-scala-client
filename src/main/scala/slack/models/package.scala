@@ -1,5 +1,6 @@
 package slack
 
+import play.api.data.validation.ValidationError
 import play.api.libs.json._
 
 import scala.util.{Failure, Success, Try}
@@ -29,6 +30,7 @@ package object models {
     })
 
   implicit val confirmFieldFmt = Json.format[ConfirmField]
+  implicit val optionFieldFmt = Json.format[OptionField]
   implicit val actionFieldFmt = Json.format[ActionField]
   implicit val attachmentFieldFmt = Json.format[AttachmentField]
   implicit val attachmentFmt = Json.format[Attachment]
@@ -57,8 +59,8 @@ package object models {
         case Some("message") => JsSuccess(json.as[ReactionItemMessage])
         case Some("file") => JsSuccess(json.as[ReactionItemFile])
         case Some("file_comment") => JsSuccess(json.as[ReactionItemFileComment])
-        case Some(t: String) => JsError(JsonValidationError("Invalid type property: {}", t))
-        case None => JsError(JsonValidationError("Required (string) event type property is missing."))
+        case Some(t: String) => JsError(ValidationError("Invalid type property: {}", t))
+        case None => JsError(ValidationError("Required (string) event type property is missing."))
       }
     }
   }
@@ -77,7 +79,7 @@ package object models {
       (json \ "type").asOpt[String] match {
         case Some("select") => JsSuccess(json.as[SelectElement])
         case Some(_) => JsSuccess(json.as[TextElement])
-        case None => JsError(JsonValidationError("Required property: [type] is missing."))
+        case None => JsError(ValidationError("Required property: [type] is missing."))
       }
     }
   }
@@ -399,12 +401,12 @@ package object models {
           case "member_joined_channel" => JsSuccess(jsValue.as[MemberJoined])
           case "member_left_channel" => JsSuccess(jsValue.as[MemberLeft])
           case "pong" => JsSuccess(jsValue.as[Pong])
-          case t: String => JsError(JsonValidationError("Invalid type property: {}", t))
+          case t: String => JsError(ValidationError("Invalid type property: {}", t))
         }
       } else if ((jsValue \ "reply_to").asOpt[Long].isDefined) {
         JsSuccess(jsValue.as[Reply])
       } else {
-        JsError(JsonValidationError("Required (string) event type property is missing."))
+        JsError(ValidationError("Required (string) event type property is missing."))
       }
     }
   }
